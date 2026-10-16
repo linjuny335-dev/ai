@@ -1,0 +1,190 @@
+/* ============================================================================
+ *  手势控制 · 样式
+ * ----------------------------------------------------------------------------
+ *  只负责三件事：定位、尺寸、状态色。
+ *  ⚠️ 玻璃质感一律来自全站唯一那套 .glass（GlassButton / GlassSurface），
+ *     这个文件**不写 backdrop-filter** —— 那是项目硬约定。
+ * ========================================================================== */
+
+/* 整层挂在 .fixed-ui 内部。.fixed-ui 自己是 z=20、pointer-events:none，
+   所以这里只需要在它内部排到其它固定 UI（最高 z=4）之上。 */
+.gesture-ui {
+  position: absolute;
+  inset: 0;
+  z-index: 9; /* 其上只剩 .loader(z=40) */
+  pointer-events: none;
+}
+
+/* 摄像头挂载点：挪到视口外、几乎全透明。
+   不用 display:none —— 那会让某些浏览器停止解码，识别就断了。 */
+.gesture-video {
+  position: fixed;
+  left: -360px;
+  top: -360px;
+  width: 320px;
+  height: 240px;
+  overflow: hidden;
+  opacity: 0.001;
+  pointer-events: none;
+}
+.gesture-video video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 光标画布：铺满视口，永不接触指针事件 */
+.gesture-cursor {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+/* ---- 右上角一列 -------------------------------------------------------- */
+.gesture-stack {
+  position: absolute;
+  /* 章节里要给右上角已有的「返回主页」让位（它 top:26px、约 38px 高） */
+  top: 78px;
+  right: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+/* 首页没有「返回主页」按钮，贴到最上 */
+.gesture-stack--entry {
+  top: 26px;
+}
+
+/* ---- 开关按钮（玻璃来自 GlassButton，这里只改尺寸与状态色） ------------ */
+.gesturebtn {
+  padding: 5px 11px;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: rgba(238, 241, 255, 0.66);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.gesturebtn .glass__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.gesturebtn__txt {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gesturebtn__dot {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.34);
+  transition: background 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+.gesturebtn:hover {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* 已开启：强调色 + 呼吸的小点 */
+.gesturebtn.is-on {
+  color: rgba(255, 255, 255, 0.94);
+  border-color: rgba(var(--accent-rgb), 0.7);
+}
+.gesturebtn.is-on .gesturebtn__dot {
+  background: rgb(var(--accent-rgb));
+  box-shadow: 0 0 10px 1px rgba(var(--accent-rgb), 0.9);
+  animation: gesturePulse 2.4s var(--ease) infinite;
+}
+/* 失败：暖色，与正常态一眼分开 */
+.gesturebtn.is-error {
+  color: rgba(255, 208, 202, 0.95);
+  border-color: rgba(255, 148, 136, 0.66);
+}
+.gesturebtn.is-error .gesturebtn__dot {
+  background: rgba(255, 148, 136, 0.95);
+  box-shadow: 0 0 9px 1px rgba(255, 148, 136, 0.7);
+}
+
+@keyframes gesturePulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 启动进度（只在 starting 态出现） */
+.gesturebtn__bar {
+  display: block;
+  width: 54px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+.gesturebtn__bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(var(--accent-rgb), 0.95);
+  transition: width 0.25s linear;
+}
+
+/* ---- 提示片 ------------------------------------------------------------ */
+.gesturechip {
+  max-width: 268px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 10.5px;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+  text-align: right;
+  text-transform: none;
+  color: rgba(238, 241, 255, 0.8);
+  animation: gestureChipIn 0.34s var(--ease) both;
+}
+.gesturechip--err {
+  color: rgba(255, 205, 198, 0.95);
+  border-color: rgba(255, 148, 136, 0.5);
+}
+.gesturechip--hint {
+  color: rgba(226, 235, 255, 0.72);
+}
+.gesturechip--dbg {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  color: rgba(180, 220, 255, 0.9);
+  text-align: left;
+}
+
+@keyframes gestureChipIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 窄屏：正文左右只剩很窄的边距，把提示片收窄，别压到正文上 */
+@media (max-width: 1100px) {
+  .gesturechip {
+    max-width: 190px;
+  }
+}

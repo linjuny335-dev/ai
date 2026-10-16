@@ -1,0 +1,37 @@
+# ---- 依赖与构建产物 ----
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vite
+
+# ---- 调试/验收临时产物（不进版本库）----
+# _log-*.txt / _tsc.log：跑构建和类型检查时落的输出，重跑一次就变了
+_log-*.txt
+_tsc.log
+_logs/
+
+# _analysis 下：验收脚本（*.cjs / *.py / *.md）要留，它们是这个项目的
+# 视觉回归流程；但截图（home-art/，约 15 MB）和素材备份没有留存价值。
+_analysis/**/*.png
+_analysis/**/*.jpg
+_analysis/**/*.jpeg
+_analysis/**/*.webp
+_analysis/**/*.bak
+_analysis/brush-backup-*/
+_analysis/home-art/
+
+# ---- 本地私密配置 ----
+# .env.local 已被上面的 *.local 覆盖；再显式写一份，防止有人改上面的规则
+.env
+.env.local
+.env.*.local
+
+# ---- 编辑器 ----
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+Thumbs.db*.bat text eol=crlf
+*.ps1 text eol=crlf

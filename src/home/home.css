@@ -1,0 +1,192 @@
+/* ============================================================================
+ *  首页入口层样式
+ * ----------------------------------------------------------------------------
+ *  只有文案 + 一个按钮。背景一点没动：银河、粒子、中心几何体都来自常驻的
+ *  GalaxyWorld / SceneGeometry，色调由 html[data-theme='home'] 提供
+ *  （与 photon 完全相同的一组变量，见 styles.css）。
+ *
+ *  排版语言与其余章节一致：等宽小字 kicker + 超细主标题 + 强调色发光。
+ * ========================================================================== */
+
+.home {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 32px 128px;
+  text-align: center;
+}
+
+.home__kicker {
+  margin: 0 0 30px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.44em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.9;
+  text-shadow: 0 2px 22px rgba(2, 3, 8, 0.95), 0 0 30px rgba(var(--accent-rgb), 0.35);
+}
+
+/* ---- 标题：上下两层 ------------------------------------------------
+   上层 = 英文 CHASING PHOTONS：小字号、细体（200）、大字距、缓慢淡入
+   下层 = BrushTitle 的「逐光而行」书法艺术字（见 brushTitle.css）
+   整块不加 margin 塌陷问题：英文与艺术字之间靠 margin 拉开。 */
+.home__title {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 34px;
+  width: 100%;
+}
+
+.home__title-en {
+  display: block;
+  font-weight: 200;
+  /* 16~22px：第一层靠字距撑仪式感，太小会读不出来（截图第一版 12~16 偏弱） */
+  font-size: clamp(14px, 1.32vw, 22px);
+  /* 大字距是这一层的全部性格：小字要靠字距撑出仪式感 */
+  letter-spacing: 0.62em;
+  /* letter-spacing 会在最后一个字母后也留一份空白，往回压一半让视觉居中 */
+  text-indent: 0.62em;
+  color: rgba(226, 236, 255, 0.72);
+  text-shadow: 0 2px 24px rgba(2, 3, 8, 0.95);
+  /* 英文比中文艺术字先落，且落得更慢——两者叠加才有「先铺垫、再亮主标题」的层次 */
+  animation: homeEnIn 2.1s var(--ease-soft) both;
+  animation-delay: 0.15s;
+}
+
+@keyframes homeEnIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+/* 英文副文案（与其余章节的 .blurb 同一档）；中文再小一号、更淡 */
+.home__blurb {
+  margin: 30px 0 0;
+  max-width: 560px;
+  font-size: 14.5px;
+  line-height: 1.9;
+  color: rgba(238, 241, 255, 0.76);
+  text-shadow: 0 1px 18px rgba(2, 3, 8, 0.9);
+}
+
+.home__blurb--cn {
+  margin-top: 12px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: rgba(238, 241, 255, 0.5);
+}
+
+/* ---- 「开始探索」 ------------------------------------------------------- */
+.home__cta {
+  position: relative;
+  margin-top: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 按钮背后一圈极慢的呼吸光：告诉用户「这里可以点」，但完全不抢镜。
+   放在包裹层是因为 .glass 自己 overflow:hidden，外发光画不出来。 */
+.home__cta::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 320px;
+  height: 320px;
+  margin: -160px 0 0 -160px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(var(--accent-rgb), 0.22),
+    rgba(var(--accent-rgb), 0.06) 52%,
+    transparent 72%
+  );
+  animation: homeBreathe 5.6s var(--ease-soft) infinite;
+}
+
+@keyframes homeBreathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+/* 比普通玻璃按钮大一号：这是全站唯一的入口 */
+.home__go {
+  padding: 16px 42px;
+  font-size: 12px;
+  letter-spacing: 0.34em;
+}
+
+/* 中文主标签后面的英文小字，弱化处理 */
+.home__go-en {
+  margin-left: 12px;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  opacity: 0.5;
+}
+
+/* ---- 底部提示 ----------------------------------------------------------- */
+.home__hint {
+  margin: 34px 0 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.4);
+  text-shadow: 0 1px 14px rgba(2, 3, 8, 0.9);
+}
+
+/* ---- 响应式 ------------------------------------------------------------ */
+@media (max-width: 820px) {
+  .home {
+    padding: 88px 22px 120px;
+  }
+  .home__kicker {
+    letter-spacing: 0.3em;
+    margin-bottom: 22px;
+  }
+  .home__blurb {
+    margin-top: 22px;
+    font-size: 13.5px;
+  }
+  .home__cta {
+    margin-top: 42px;
+  }
+  .home__go {
+    padding: 14px 32px;
+    letter-spacing: 0.24em;
+  }
+  .home__cta::before {
+    width: 240px;
+    height: 240px;
+    margin: -120px 0 0 -120px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home__cta::before {
+    animation: none;
+    opacity: 0.7;
+  }
+}

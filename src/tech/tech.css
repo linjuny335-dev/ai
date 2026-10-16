@@ -1,0 +1,484 @@
+/* ============================================================================
+ *  TECH 场景 —— 漂浮在银河中的信息终端
+ *  样式只负责布局与排版；玻璃质感全部来自 ui/glass/glass.css。
+ * ========================================================================== */
+
+.tech {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 104px 32px 128px;
+}
+
+.tech__inner {
+  width: min(1180px, 94vw);
+  /* 94vw 是不含 padding 的视口宽度：视口变窄、或外层为左侧轨道让出通道时，
+     定宽会撑破容器。加上这条之后宽度自动收敛到可用宽度。 */
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ------------------------------------------------------------- 头部 */
+
+.tech__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.tech__title {
+  margin: 0;
+  font-weight: 300;
+  line-height: 1.12;
+  font-size: clamp(20px, 2.4vw, 34px);
+}
+
+/* 标题下的中文副文案（来自 theme.blurbCn）。
+   比正文小、比 hint 略亮 —— 让「这一栏目讲什么」一眼可读。 */
+.tech__sub {
+  margin: 10px 0 0;
+  max-width: 46ch;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  color: rgba(238, 241, 255, 0.5);
+}
+
+.tech__tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 搜索框（也是一块玻璃） */
+.tech-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+}
+.tech-field__icon {
+  position: relative;
+  z-index: 1;
+  font-size: 13px;
+  color: rgba(238, 241, 255, 0.5);
+}
+.tech-field__input {
+  position: relative;
+  z-index: 1;
+  width: 140px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #eef1ff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+.tech-field__input::placeholder {
+  color: rgba(238, 241, 255, 0.34);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 10px;
+}
+
+/* --------------------------------------------------- 数据源 / 分类切换 */
+
+.tech__switch {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* 当前分类的中文说明：桌面端显示，窄屏让位给控件 */
+.tech__hint {
+  flex: 1 1 180px;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  line-height: 1.5;
+  color: rgba(238, 241, 255, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- 列表区 */
+
+.tech__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+  max-height: calc(100vh - 476px);
+  min-height: 290px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px;
+  margin: -6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+.tech__list::-webkit-scrollbar {
+  width: 6px;
+}
+.tech__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 99px;
+}
+
+.tech__list > .tech-state {
+  grid-column: 1 / -1;
+}
+
+/* ------------------------------------------------------------- 卡片 */
+
+.news-slot {
+  display: flex;
+}
+
+.news-card {
+  /* 每个源一个强调色，由 TechCard 内联写入。没写就回落主题青绿 */
+  --src: var(--accent);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 17px 19px 15px;
+  text-decoration: none;
+  color: inherit;
+  min-height: 176px;
+}
+.news-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.news-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(238, 241, 255, 0.42);
+}
+/* 序号用该源的强调色 —— 一眼能看出这条是哪来的 */
+.news-card__idx {
+  color: var(--src);
+  opacity: 0.75;
+}
+.news-card__primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--src);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--src) 55%, transparent);
+}
+.news-card__glyph {
+  font-style: normal;
+  font-size: 9px;
+  opacity: 0.9;
+}
+
+.news-card__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.42;
+  color: rgba(241, 244, 255, 0.95);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 一句话简介（GitHub / Hugging Face 有，HN 没有） */
+.news-card__desc {
+  margin: -3px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: rgba(238, 241, 255, 0.55);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-card__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: rgba(238, 241, 255, 0.48);
+}
+.news-card__meta i {
+  font-style: normal;
+  opacity: 0.4;
+}
+.news-card__meta em {
+  font-style: normal;
+  margin-left: 4px;
+  opacity: 0.62;
+}
+.news-card__owner {
+  color: rgba(238, 241, 255, 0.72);
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 标签行：语言 / task / license / topics */
+.news-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.news-card__tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.045);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: rgba(238, 241, 255, 0.6);
+}
+
+.news-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.36);
+}
+.news-card__foot-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.news-card__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px -1px currentColor;
+}
+.news-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.news-card__act {
+  color: rgba(238, 241, 255, 0.42);
+  cursor: pointer;
+  transition: color 0.3s var(--ease);
+}
+.news-card__act:hover {
+  color: var(--accent-2);
+}
+.news-card__go {
+  color: rgba(238, 241, 255, 0.6);
+  transition: color 0.35s var(--ease), transform 0.35s var(--ease);
+}
+.news-card:hover .news-card__go {
+  color: var(--accent-2);
+  transform: translateX(3px);
+}
+
+/* ------------------------------------------------- 自动刷新指示器 */
+
+.sync-meter {
+  padding: 10px 16px;
+  gap: 9px;
+}
+.sync-meter .glass__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.sync-meter__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(238, 241, 255, 0.28);
+}
+.sync-meter.is-on .sync-meter__dot {
+  background: var(--accent-2);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.9);
+  animation: syncPulse 2.6s ease-in-out infinite;
+}
+.sync-meter.is-busy .sync-meter__dot {
+  background: #fff;
+  animation: syncPulse 0.85s ease-in-out infinite;
+}
+@keyframes syncPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ------------------------------------------------------- 加载 / 失败 / 空 */
+
+.news-card--skeleton {
+  pointer-events: none;
+}
+.sk {
+  border-radius: 6px;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.05) 30%,
+    rgba(190, 200, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.05) 70%
+  );
+  background-size: 220% 100%;
+  animation: skShine 1.5s linear infinite;
+}
+.sk--top {
+  width: 38%;
+  height: 9px;
+}
+.sk--title {
+  width: 100%;
+  height: 13px;
+}
+.sk--short {
+  width: 62%;
+}
+.sk--meta {
+  width: 54%;
+  height: 9px;
+  margin-top: auto;
+}
+@keyframes skShine {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+.tech-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 46px 30px;
+  text-align: center;
+  border-radius: 22px;
+}
+.tech-state > * {
+  position: relative;
+  z-index: 1;
+}
+.tech-state__icon {
+  font-size: 24px;
+  color: var(--accent);
+  opacity: 0.85;
+}
+.tech-state__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+.tech-state__text {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: rgba(238, 241, 255, 0.62);
+  max-width: 46ch;
+}
+
+/* ------------------------------------------------------------- 页脚 */
+
+.tech__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.4);
+}
+.tech__foot-link {
+  color: rgba(238, 241, 255, 0.72);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.tech__foot-link:hover {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+.glass--btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ------------------------------------------------------------- 窄屏 */
+
+@media (max-width: 900px) {
+  .tech {
+    padding: 96px 18px 120px;
+  }
+  .tech__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .tech__switch {
+    gap: 10px;
+  }
+  .tech__hint {
+    display: none;
+  }
+  .tech__list {
+    max-height: calc(100vh - 520px);
+    grid-template-columns: 1fr;
+  }
+  .tech-field__input {
+    width: 110px;
+  }
+  .tech__foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

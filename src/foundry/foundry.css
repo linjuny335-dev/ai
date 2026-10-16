@@ -1,0 +1,946 @@
+/* ============================================================================
+ *  FOUNDRY 场景 —— 「器 · 探」发射任务时间轴
+ * ----------------------------------------------------------------------------
+ *  只负责布局与排版；玻璃质感全部来自 ui/glass/glass.css，
+ *  这样悬停上浮、指针高光这套手感和其它栏目完全一致。
+ *
+ *  三段式结构：
+ *      .foundry__head   章节标题 + 即将发射 / 已完成 切换
+ *      .foundry__body   .fhero（选中任务 + 实时倒计时） + .ftl（时间轴）
+ *      .foundry__foot   来源（Launch Library 2）+ 更新时间 / 缓存状态
+ *
+ *  版面约束：全站是「一屏一场景」，不允许纵向滚动，所以这里的高度是算过的 ——
+ *  头部 ~130 / 主区 ~250 / 时间轴 ~200 / 页脚 ~16，加上留白刚好一屏。
+ *  宽屏下给左侧「银河轨道」左右各让 200px（和 TECH、PHOTON 同一个约定）。
+ * ========================================================================== */
+
+.foundry {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 32px 116px;
+}
+
+.foundry__inner {
+  width: min(1240px, 94vw);
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+/* ------------------------------------------------------------ 头部 */
+
+.foundry__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.foundry__title {
+  margin: 0;
+  font-weight: 300;
+  line-height: 1.12;
+  font-size: clamp(20px, 2.4vw, 34px);
+}
+
+.foundry__sub {
+  margin: 10px 0 0;
+  max-width: 52ch;
+  font-size: 12.5px;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  color: rgba(238, 241, 255, 0.5);
+}
+
+.foundry .kicker {
+  margin-bottom: 16px;
+}
+
+.foundry__switch {
+  flex: none;
+}
+
+/* ------------------------------------------------- 实时发射任务的小标题行
+ *  2026-09-21：装备展厅插到了标题和发射时间轴之间，于是把「即将发射 / 已完成」
+ *  开关一起下移到它真正控制的那一块头上。原来挂在标题右侧时，标题下方第一个
+ *  出现的已经是装备展厅，开关容易被误读成「切换装备」。
+ *  这一行只是给下面那块贴标签，不改变任何原有组件的样式。 */
+.foundry__bodyhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.foundry__bodylabel {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.5);
+}
+.foundry__bodylabel span {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: rgba(238, 241, 255, 0.3);
+}
+
+/* ------------------------------------------------------------ 主区 */
+
+.foundry__body {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+/* ---- 选中任务：左边「是什么」，右边「还有多久」 ---- */
+
+.fhero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 16px 22px 17px;
+  border-radius: 22px;
+}
+.fhero > * {
+  position: relative;
+  z-index: 1;
+}
+/* 信息多，不做倾斜（会晃），只轻轻上浮 */
+.fhero:hover {
+  --lift: -3px;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.fhero__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.fhero__tone {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(238, 241, 255, 0.9);
+}
+.fhero__tone.is-go {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  color: var(--accent-2);
+  box-shadow: 0 0 12px -4px rgba(var(--accent-rgb), 0.9);
+}
+.fhero__tone.is-ok {
+  border-color: rgba(126, 231, 178, 0.5);
+  color: #9df0c4;
+}
+.fhero__tone.is-bad {
+  border-color: rgba(255, 138, 150, 0.5);
+  color: #ffb3bd;
+}
+.fhero__tone.is-hold {
+  color: rgba(238, 241, 255, 0.66);
+}
+.fhero__no {
+  color: rgba(238, 241, 255, 0.42);
+}
+.fhero__live {
+  color: #ffb3bd;
+}
+
+.fhero__name {
+  margin: 0;
+  font-size: clamp(17px, 1.6vw, 22px);
+  font-weight: 400;
+  line-height: 1.34;
+  color: rgba(244, 246, 255, 0.97);
+}
+.fhero__bys {
+  margin: 7px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: rgba(238, 241, 255, 0.56);
+}
+
+.fhero__reads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 6px 20px;
+  margin-top: 12px;
+}
+.fhero__read {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: 11.5px;
+}
+.fhero__rl {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.38);
+}
+.fhero__rv {
+  min-width: 0;
+  /* 值可能很长（"Sun-Synchronous Orbit · Earth Science"）。宁可折两行，
+     也不要截成 "…"，因为这里每一个字都是真实读数。 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: rgba(238, 241, 255, 0.82);
+}
+.fhero__rv.is-empty {
+  color: rgba(238, 241, 255, 0.34);
+}
+
+.fhero__acts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.fhero__link {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(238, 241, 255, 0.6);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  padding-bottom: 2px;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.fhero__link:hover {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+.fhero__clock {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* ------------------------------------------------------ 倒计时 */
+
+.cd {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cd__sign {
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: clamp(15px, 1.5vw, 20px);
+  letter-spacing: 0.08em;
+  color: var(--accent-2);
+  transform: translateY(-4px);
+}
+/* 已过 T-0：语义换色，但数字照常跳动（真实数据的诚实做法） */
+.cd.is-past .cd__sign {
+  color: #ffb3bd;
+}
+.cd__unit {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.cd__unit > b {
+  font-family: var(--font-mono);
+  font-size: clamp(26px, 3.2vw, 42px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: rgba(246, 247, 255, 0.97);
+  /* 等宽数字：秒位跳动时宽度不抖，整块不会左右晃 */
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 26px rgba(var(--accent-rgb), 0.32);
+}
+.cd__unit > em {
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: rgba(238, 241, 255, 0.58);
+}
+.cd__note {
+  flex-basis: 100%;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-style: normal;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: rgba(238, 241, 255, 0.4);
+}
+.cd--compact {
+  gap: 4px;
+}
+.cd--compact .cd__sign {
+  font-size: 10px;
+  transform: none;
+  color: rgba(238, 241, 255, 0.5);
+}
+.cd--compact .cd__unit > b {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(238, 241, 255, 0.8);
+  text-shadow: none;
+}
+.cd--compact .cd__unit > em {
+  font-size: 8px;
+  color: rgba(238, 241, 255, 0.35);
+}
+/* 时刻待定 / 精度不够：不装作在倒数 */
+.cd--tbd {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.cd--tbd > b {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(238, 241, 255, 0.72);
+}
+.cd--tbd > i {
+  font-style: normal;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: rgba(238, 241, 255, 0.4);
+}
+.cd--tbd.cd--compact > b {
+  font-size: 10px;
+}
+
+/* ------------------------------------------------------ 时间轴 */
+
+.ftl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ftl__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.4);
+  padding: 0 4px;
+}
+.ftl__pos {
+  color: var(--accent-2);
+}
+
+.ftl__rail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ftl__step {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(9, 12, 28, 0.4);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: rgba(238, 241, 255, 0.8);
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease), border-color 0.3s var(--ease), background 0.3s var(--ease),
+    color 0.3s var(--ease);
+}
+.ftl__step:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.06);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(16, 20, 44, 0.62);
+  color: #fff;
+}
+.ftl__step:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+/* 轨道：一条细发光线 + 缓慢向前流动的光点 */
+.ftl__track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(8, 11, 26, 0.34);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.ftl__line {
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  top: 27px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(200, 205, 255, 0.18),
+    rgba(255, 255, 255, 0.05)
+  );
+  overflow: hidden;
+  pointer-events: none;
+}
+.ftl__flow {
+  position: absolute;
+  top: 0;
+  width: 22%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb), 0.9), transparent);
+  transform: translateX(-120%);
+  animation: ftlFlow 6.4s linear infinite;
+}
+.ftl__flow--b {
+  animation-duration: 9.8s;
+  animation-delay: -4.2s;
+  width: 14%;
+}
+@keyframes ftlFlow {
+  to {
+    transform: translateX(560%);
+  }
+}
+
+/* 一站 */
+.ftl__node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 0 6px 4px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease), background 0.3s var(--ease);
+}
+.ftl__node:hover {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.04);
+}
+.ftl__dot {
+  width: 9px;
+  height: 9px;
+  margin-bottom: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  transition: background 0.35s var(--ease), box-shadow 0.35s var(--ease), transform 0.35s var(--ease);
+}
+.ftl__node.is-go .ftl__dot {
+  background: rgba(var(--accent-rgb), 0.8);
+  box-shadow: 0 0 10px -1px rgba(var(--accent-rgb), 0.95);
+}
+.ftl__node.is-ok .ftl__dot {
+  background: rgba(126, 231, 178, 0.75);
+  box-shadow: 0 0 10px -2px rgba(126, 231, 178, 0.9);
+}
+.ftl__node.is-bad .ftl__dot {
+  background: rgba(255, 138, 150, 0.75);
+  box-shadow: 0 0 10px -2px rgba(255, 138, 150, 0.9);
+}
+
+.ftl__no {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  color: rgba(238, 241, 255, 0.32);
+}
+.ftl__name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-align: center;
+  color: rgba(238, 241, 255, 0.72);
+}
+.ftl__when {
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  min-height: 14px;
+}
+.ftl__tbd {
+  font-size: 9.5px;
+  color: rgba(238, 241, 255, 0.4);
+}
+.ftl__date {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: rgba(238, 241, 255, 0.34);
+}
+
+/* 当前站：鼓起来，看起来像「正在执行的任务」 */
+.ftl__node.is-active {
+  background: rgba(var(--accent-rgb), 0.1);
+  transform: translateY(-3px);
+}
+.ftl__node.is-active .ftl__dot {
+  background: #fff;
+  transform: scale(1.5);
+  box-shadow: 0 0 16px rgba(var(--accent-rgb), 1);
+}
+.ftl__node.is-active .ftl__name {
+  color: rgba(248, 249, 255, 0.98);
+}
+.ftl__node.is-active .ftl__no,
+.ftl__node.is-active .ftl__date {
+  color: var(--accent-2);
+}
+
+.ftl__hint {
+  margin: 0;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: rgba(238, 241, 255, 0.32);
+}
+
+/* ------------------------------------------------- 加载 / 失败 / 页脚 */
+
+.fstate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 320px;
+  padding: 44px 30px;
+  border-radius: 22px;
+  text-align: center;
+}
+.fstate > * {
+  position: relative;
+  z-index: 1;
+}
+.fstate__spin {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--accent-2);
+  animation: fstateSpin 0.9s linear infinite;
+}
+@keyframes fstateSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.fstate__icon {
+  font-size: 24px;
+  color: var(--accent);
+}
+.fstate__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+.fstate__text {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 12.5px;
+  line-height: 1.85;
+  color: rgba(238, 241, 255, 0.62);
+}
+.fstate__note {
+  margin: 2px 0 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: rgba(238, 241, 255, 0.36);
+}
+
+.foundry__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.38);
+}
+.foundry__foot-link {
+  color: rgba(238, 241, 255, 0.72);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.foundry__foot-link:hover {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.foundry__foot-meta {
+  text-transform: none;
+  letter-spacing: 0.08em;
+}
+
+/* ------------------------------------------------------ 任务详情面板 */
+
+.fdet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3vh 3vw;
+  animation: fdetIn 0.32s var(--ease) both;
+}
+@keyframes fdetIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fdet__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  cursor: zoom-out;
+  background: radial-gradient(120% 100% at 50% 40%, rgba(6, 8, 20, 0.8), rgba(1, 2, 8, 0.93));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.fdet__panel {
+  position: relative;
+  z-index: 1;
+  width: min(900px, 100%);
+  max-height: 100%;
+  overflow: hidden auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(8, 11, 26, 0.62);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  backdrop-filter: blur(20px) saturate(1.35);
+  box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.95);
+  animation: fdetPanelIn 0.42s var(--ease) both;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+@keyframes fdetPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.988);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 官方配图当背景：压得很暗，只做氛围，不抢信息 */
+.fdet__hero {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 24px;
+  pointer-events: none;
+}
+.fdet__hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.2;
+  filter: saturate(0.75);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.35) 46%, transparent 78%);
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.35) 46%, transparent 78%);
+}
+.fdet__head,
+.fdet__count,
+.fdet__grid,
+.fdet__mission,
+.fdet__foot {
+  position: relative;
+  z-index: 1;
+}
+
+.fdet__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.fdet__kicker {
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.5);
+}
+.fdet__tone {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(238, 241, 255, 0.9);
+}
+.fdet__tone.is-go {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  color: var(--accent-2);
+}
+.fdet__tone.is-ok {
+  border-color: rgba(126, 231, 178, 0.5);
+  color: #9df0c4;
+}
+.fdet__tone.is-bad {
+  border-color: rgba(255, 138, 150, 0.5);
+  color: #ffb3bd;
+}
+.fdet__title {
+  margin: 0;
+  font-size: clamp(17px, 1.7vw, 23px);
+  font-weight: 400;
+  line-height: 1.32;
+}
+.fdet__sub {
+  margin: 7px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: rgba(238, 241, 255, 0.56);
+}
+.fdet__tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.fdet__link {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(238, 241, 255, 0.68);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.fdet__link:hover {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.fdet__close {
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 999px;
+  color: rgba(238, 241, 255, 0.86);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+}
+
+.fdet__count {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(6, 9, 22, 0.42);
+}
+
+.fdet__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px 18px;
+}
+.fdet__field {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.fdet__label {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.38);
+}
+.fdet__value {
+  min-width: 0;
+  text-align: right;
+  font-size: 11.5px;
+  color: rgba(238, 241, 255, 0.84);
+}
+.fdet__value.is-mono {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+.fdet__value.is-empty {
+  color: rgba(238, 241, 255, 0.32);
+}
+
+.fdet__mission {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fdet__h3 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+.fdet__desc {
+  max-height: min(30vh, 250px);
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+.fdet__desc::-webkit-scrollbar {
+  width: 5px;
+}
+.fdet__desc::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 99px;
+}
+.fdet__desc > p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.95;
+  color: rgba(238, 241, 255, 0.78);
+}
+.fdet__desc > p.is-empty {
+  color: rgba(238, 241, 255, 0.4);
+}
+
+.fdet__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: rgba(238, 241, 255, 0.34);
+}
+.fdet__footid {
+  word-break: break-all;
+}
+
+/* --------------------------------------------------------- 窄屏 */
+
+@media (min-width: 1200px) {
+  html .foundry {
+    padding-left: 200px;
+    padding-right: 200px;
+  }
+}
+
+/* 一屏塞不下时，先收时间轴的厚度，再收 hero 的两栏 */
+@media (max-width: 1240px) {
+  .ftl__track {
+    padding: 12px 12px 10px;
+    gap: 6px;
+  }
+  .fhero {
+    gap: 14px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .fhero {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .fhero__clock {
+    justify-content: flex-start;
+    padding-top: 4px;
+  }
+  /* 轨道的列数由 LaunchTimeline 的 matchMedia 决定（3 站），
+     这里不再用 nth-child 藏节点 —— 藏了但还在计数会让人以为「还有两个看不着」 */
+}
+
+@media (max-width: 900px) {
+  .foundry {
+    padding: 92px 16px 112px;
+  }
+  .foundry__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .fdet__head {
+    flex-direction: column;
+  }
+}
+
+/* 弱机 / 低电量：动效降级，信息一个不少 */
+@media (prefers-reduced-motion: reduce) {
+  .ftl__flow {
+    animation: none;
+  }
+  .fstate__spin {
+    animation-duration: 2.4s;
+  }
+}

@@ -1,0 +1,190 @@
+/* ============================================================================
+ *  「逐光而行」书法艺术字样式（素材版 v2 · 融入星河）
+ * ----------------------------------------------------------------------------
+ *  2026-10-15 第二次调整。用户反馈：「艺术字像一张贴在网页上的图片，
+ *  周围有明显的灰白色矩形区域和���自然的白色光影」。
+ *
+ *  ⚠️ 矩形光影的真正来源已定位并修掉（v1 的 .brush2__sheen）：
+ *     它是 `position:absolute; inset:0` + `mix-blend-mode:screen` 的
+ *     `circle 620px` 径向渐变。而容器只有 394px 高 —— 620px 半径的渐变
+ *     在容器的上/下边缘（约 197px 处）**远还没淡到 transparent**，
+ *     于是被容器边界硬生生切断 → 读成一块发灰发白的矩形；
+ *     再叠加 `screen` 混合把中间整片提亮，就是截图左上那团光雾。
+ *     ❌ 不要把它改回来。v2 换成 `.brush2__glow`：一个**跟随鼠标的小圆形
+ *        光斑**（固定 240px 圆形、四周早已淡到全透明），任何边缘都不会
+ *        出现硬切，所以它在任何视口下都不可能读成矩形。
+ *
+ *  另外这一版整体更克制：
+ *    · 颜色全部交给素材（`_analysis/make-brush-png.py` 里按用户给的
+ *      #A8B5C8 / #C0C7D2 / #7F91AB / #777B9B 分层），网页不再叠任何色
+ *    · 容器与图片**都没有** background / backdrop-filter / box-shadow /
+ *      filter —— 星河背景必须能直接透过字周围的空白区域
+ *    · 星芒峰值从 0.55 降到 0.40，冷白降到雾蓝灰
+ *
+ *  层次（自下而上）：
+ *    picture > img      主体素材，真透明、无矩形
+ *    .brush2__glow      极小范围、跟随鼠标的柔光斑（无硬边）
+ *    .brush2__sparks    鼠标靠近时微微亮起的星芒
+ *
+ *  ⚠️ 2026-10-15 换掉上一版的 SVG 笔画方案，改用**用户上传的狂草原图**。
+ *     原来这一整套东西都不再适用，已整体删除：
+ *       .brush__svg / .brush__ink / .brush__stroke / .brush__trail-*
+ *       .brush__motes / .brush__fw / .brush__sweep / .brush__sheen
+ *     以及 brushData.ts、_analysis/extract-brush.py、split-strokes.py、
+ *     build-brush-data.py。**不要把它们捡回来** —— 用户明确要保留原图造型，
+ *     矢量化会抹平狂草连笔里的飞白与不规则笔锋。
+ * ========================================================================== */
+
+.brush2 {
+  /* 鼠标位置（BrushTitle 里用 rAF 写）与「靠近程度」 */
+  --mx: 0.42;
+  --my: 0.3;
+  --near: 0;
+
+  position: relative;
+  /* 宽幅构图：素材是 1671×585（宽高比 2.86），
+     按原图比例给宽度，高度由 aspect-ratio 自动推 → 不拉伸不变形。
+     ⚠️ 别放大：截图里 1240px 时字的上缘会顶到顶部导航（.topbar），
+     撞出「字压在导航上」的观感。
+     2026-10-15 用户要求「字号调小一点」：1120/76vw → 940/66vw（约 -16%）。
+     收窄后四周留白更多，背景星河能透出来更多，也更贴合「融进宇宙」的观感。
+     ⚠️ 改这里时验收脚本的宽高比断言不受影响（比例由 aspect-ratio 锁死）。*/
+  width: min(940px, 66vw);
+  margin: 6px auto 0;
+  aspect-ratio: 1671 / 585;
+  pointer-events: none;
+  /* ⚠️ 这里**不能**加 background / backdrop-filter / box-shadow ——
+     任何铺满容器的半透明层都会在深色背景上读成「一块矩形」。
+     isolation 只是给 .brush2__glow 的混合兜底，不产生任何可见面。 */
+}
+
+.brush2 picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.brush2__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* 不加任何 filter / shadow：保留原图墨迹的通透边缘 */
+  object-fit: contain;
+  /* 进场缓慢淡入。素材是深底上要读的浅色字，所以从 0 淡入而不是位移。
+     blur 从 7px 降到 4px：v1 的 7px 在字周围那圈半透明像素上会读成
+     「一层发灰的雾」，正是被误认为矩形光影的东西之一。 */
+  animation: brush2In 2.6s var(--ease-soft) both;
+  animation-delay: 0.35s;
+}
+
+@keyframes brush2In {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* ---- 星芒 ----------------------------------------------------------------
+   用户：「鼠标靠近时局部星芒轻微亮起」，且要「非常轻微的冷色高光」。
+   峰值 0.40（v1 是 0.55），色改为雾蓝灰 rgba(198,208,224) ——
+   v1 的 rgba(235,242,250,0.95) 在深底上是一颗冷白的亮点，读成「发光点」
+   而不是星芒。is-near 之外保持 0：鼠标不在附近时字是安静的。 */
+.brush2__sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.brush2__spark {
+  position: absolute;
+  left: var(--sx);
+  top: var(--sy);
+  width: var(--ss);
+  height: var(--ss);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(206, 216, 232, 0.85),
+    rgba(140, 158, 186, 0) 72%
+  );
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 1.1s var(--ease-soft), transform 1.1s var(--ease-soft);
+  /* 极轻的呼吸：让星芒像「在明灭」，不是闪烁 */
+  animation: brush2Spark var(--sd) ease-in-out infinite alternate;
+}
+
+.brush2.is-near .brush2__spark {
+  opacity: calc(var(--near) * 0.4);
+  transform: scale(1);
+}
+
+@keyframes brush2Spark {
+  from {
+    filter: brightness(0.88);
+  }
+  to {
+    filter: brightness(1.08);
+  }
+}
+
+/* ---- 跟随鼠标的柔光斑 ---------------------------------------------------
+   v1 的 .brush2__sheen 是「铺满容器的大半径渐变 + screen」，
+   在 383px 高的容器里被上下边缘硬切 → 一块发灰的矩形（见文件头说明）。
+
+   v2 换成**小圆形**，用 left/top 定位、四周早已淡到全透明，
+   所以：① 永远没有硬边 ② 面积只占容器一小块 ③ 视口怎么变都不会变形。
+   混合模式也从 screen 降到 soft-light（更弱、更不容易发灰）。
+   中心跟随鼠标做**极慢**漂移（k=0.045，BrushTitle 里的 rAF）。
+   峰值 0.14：再高就又变成「一层发光的膜」。
+
+   ⚠️ 尺寸必须**跟随容器**（百分比 + closest-side），不能用固定 px：
+   容器从 1120px 收窄到 940px 后，固定 240px 的占比会从 14% 升到 19%，
+   就不再是「一小块光斑」了。closest-side 让渐变半径自动等于元素短边，
+   容器怎么变都保持同样的观感。 */
+.brush2__glow {
+  position: absolute;
+  left: calc(var(--mx) * 100%);
+  top: calc(var(--my) * 100%);
+  width: 25%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  background: radial-gradient(
+    circle closest-side,
+    rgba(196, 212, 236, 0.14),
+    rgba(168, 186, 214, 0.04) 48%,
+    rgba(168, 186, 214, 0) 72%
+  );
+}
+
+/* ---- 降级 ---------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .brush2__img {
+    animation: none;
+    opacity: 1;
+    filter: none;
+  }
+  .brush2__spark {
+    animation: none;
+    transition: none;
+  }
+  .brush2__glow {
+    display: none;
+  }
+}
+
+/* ---- 窄屏 ----------------------------------------------------------------
+   素材是宽幅（2.86:1），窄屏必须缩得更狠才不会溢出。
+   .home 已有 padding，这里只管相对宽度。 */
+@media (max-width: 900px) {
+  .brush2 {
+    width: 94vw;
+  }
+}

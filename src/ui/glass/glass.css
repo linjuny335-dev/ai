@@ -1,0 +1,301 @@
+/* ============================================================================
+ *  Liquid Glass —— 液态玻璃样式层
+ * ----------------------------------------------------------------------------
+ *  五层质感（全部伪元素，不额外堆 DOM）：
+ *      1. 底色        半透明渐变 + 紫蓝环境色，银河从底下隐约透上来
+ *      2. backdrop    blur + saturate
+ *      3. 边缘高光    inset 1px + 细边框
+ *      4. 折射光带    极淡斜向光，指针进入后缓慢流动
+ *      5. 指针高光    跟随鼠标的径向高光
+ *
+ *  动画只用 transform / opacity，指针位置只写 CSS 变量（--gx/--gy/--tx/--ty）。
+ *  跟手时 .is-live 用 0.18s 过渡；离开后回落到 0.55s，所以不会「弹」回去。
+ * ========================================================================== */
+
+.glass {
+  --gx: 50%;
+  --gy: 50%;
+  --tx: 0deg;
+  --ty: 0deg;
+  --lift: 0px;
+  --sc: 1;
+
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background-color: rgba(9, 12, 28, 0.26);
+  background-image:
+    linear-gradient(158deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.03) 58%),
+    linear-gradient(140deg, rgba(150, 160, 255, 0.1) 0%, rgba(88, 108, 220, 0.05) 62%, rgba(255, 255, 255, 0.02) 100%);
+  -webkit-backdrop-filter: blur(16px) saturate(1.35);
+  backdrop-filter: blur(16px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 34px rgba(140, 160, 255, 0.06),
+    0 22px 54px -30px rgba(0, 0, 0, 0.95);
+  transform: perspective(1000px) rotateX(var(--tx)) rotateY(var(--ty))
+    translate3d(0, var(--lift), 0) scale(var(--sc));
+  transition:
+    transform 0.55s var(--ease),
+    box-shadow 0.45s var(--ease),
+    border-color 0.45s var(--ease),
+    background-color 0.45s var(--ease);
+}
+
+/* 指针在元素内：短过渡跟手；hover 的同时上浮 + 放大 */
+.glass.is-live {
+  transition:
+    transform 0.18s ease-out,
+    box-shadow 0.3s var(--ease),
+    border-color 0.3s var(--ease);
+}
+.glass--tilt:hover {
+  --lift: -5px;
+  --sc: 1.02;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 40px rgba(150, 170, 255, 0.1),
+    0 30px 66px -30px rgba(0, 0, 0, 0.98),
+    0 0 34px -12px rgba(130, 150, 255, 0.5);
+}
+
+/* ④ 折射光带：一条斜向的淡光，指针进入后缓慢横移 */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(180, 195, 255, 0.09) 46%,
+    rgba(255, 255, 255, 0.05) 52%,
+    transparent 68%
+  );
+  opacity: 0.45;
+  transition: opacity 0.5s var(--ease);
+}
+.glass.is-live::before {
+  opacity: 0.9;
+  animation: glassFlow 3.4s linear infinite;
+}
+@keyframes glassFlow {
+  0% {
+    transform: translate3d(-16%, 0, 0);
+  }
+  100% {
+    transform: translate3d(16%, 0, 0);
+  }
+}
+
+/* ⑤ 指针高光：跟着鼠标走的一小块柔光 */
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    300px circle at var(--gx) var(--gy),
+    rgba(255, 255, 255, 0.15),
+    rgba(190, 200, 255, 0.06) 34%,
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.45s var(--ease);
+}
+.glass:hover::after {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------- 玻璃按钮 / 按压 */
+
+.glass--btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.86);
+  cursor: pointer;
+}
+.glass--btn:hover {
+  --lift: -2px;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+.glass--btn:active {
+  --sc: 0.98;
+  --lift: 0px;
+}
+.glass__label {
+  position: relative;
+  z-index: 1;
+}
+.glass-btn__ripple {
+  position: absolute;
+  left: var(--rx, 50%);
+  top: var(--ry, 50%);
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(200, 212, 255, 0.55), rgba(150, 170, 255, 0) 70%);
+  opacity: 0;
+}
+.glass--btn.is-ripple .glass-btn__ripple {
+  animation: glassRipple 0.62s ease-out;
+}
+@keyframes glassRipple {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(28);
+  }
+}
+
+/* ------------------------------------------------- 分段控件 / 顶部导航条 */
+
+.glass-seg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 999px;
+}
+.glass-seg--nav {
+  padding: 5px;
+  border-radius: 999px;
+}
+
+/* 滑动的那块液态玻璃 */
+.glass-seg__ind {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  height: calc(100% - 8px);
+  border-radius: 999px;
+  pointer-events: none;
+  background-image: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(170, 182, 255, 0.15) 100%
+  );
+  background-color: rgba(140, 155, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  backdrop-filter: blur(10px) saturate(1.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 26px -12px rgba(90, 110, 255, 0.85),
+    0 0 22px -6px rgba(130, 150, 255, 0.35);
+  /* 略带回弹，滑动时像一小块液体被推过去 */
+  transition:
+    transform 0.52s cubic-bezier(0.34, 1.24, 0.42, 1),
+    width 0.52s cubic-bezier(0.34, 1.24, 0.42, 1),
+    opacity 0.3s var(--ease);
+}
+
+.glass-seg__btn {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 9px 20px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.55);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.35s var(--ease), text-shadow 0.35s var(--ease);
+}
+.glass-seg--nav .glass-seg__btn {
+  padding: 10px 26px;
+}
+.glass-seg__btn:hover {
+  color: rgba(238, 241, 255, 0.85);
+}
+.glass-seg__btn.is-active {
+  color: #fff;
+  text-shadow: 0 0 20px rgba(180, 195, 255, 0.7);
+}
+
+/* 选项卡上的小图标（数据源切换用），跟着选中态一起亮起来 */
+.glass-seg__icon {
+  display: inline-block;
+  margin-right: 7px;
+  font-style: normal;
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.55;
+  transition: opacity 0.35s var(--ease), color 0.35s var(--ease);
+}
+.glass-seg__btn:hover .glass-seg__icon {
+  opacity: 0.8;
+}
+.glass-seg__btn.is-active .glass-seg__icon {
+  opacity: 1;
+  color: var(--accent-2);
+}
+.glass-seg__badge {
+  margin-left: 8px;
+  font-style: normal;
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+/* --------------------------------------------------------- 入场（第六条）
+ * 用在包裹层而不是 .glass 本身：animation 的终态会覆盖 transform，
+ * 直接加在 .glass 上会把 hover 的倾斜吃掉。 */
+.glass-enter {
+  animation: glassIn 0.52s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@keyframes glassIn {
+  from {
+    opacity: 0;
+    transform: perspective(900px) scale(0.96) rotateX(2.5deg) rotateY(-2deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass,
+  .glass.is-live {
+    transition: none;
+  }
+  .glass.is-live::before {
+    animation: none;
+  }
+  .glass--btn.is-ripple .glass-btn__ripple {
+    animation: none;
+  }
+  .glass-seg__ind {
+    transition: none;
+  }
+  .glass-enter {
+    animation-duration: 0.01s;
+  }
+}

@@ -1,0 +1,780 @@
+/* ============================================================================
+ *  cortex.css —— CORTEX「天文实验室」样式
+ * ----------------------------------------------------------------------------
+ *  只写布局、排版、线稿配色与滑杆外观；玻璃质感全部来自 ui/glass/glass.css。
+ *  配色一律走主题变量 var(--accent) / var(--accent-2) / var(--accent-rgb)。
+ *
+ *  ⚠️ 两条不能踩的坑（都记在项目长期记忆里）：
+ *   ① 滑杆是原生 input，必须显式 pointer-events:auto —— .scene-wrap 默认
+ *      pointer-events:none 且只放行 button / a / .logo，原生 input 会被
+ *      下方的 WebGL 画布接走事件（踩过：PHOTON 的日期框、填 Key 的输入框）。
+ *   ② 别在 flex 列里用 align-items:center 装超过视口的内容 —— 会裁顶。
+ *      这里 .clab 用 flex 列 + 项目既有的 .scene-scroll 承担滚动，不用 center 裁切。
+ * ========================================================================== */
+
+/* ═════════════════════════ 一、实验台骨架 ═════════════════════════ */
+
+.clab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.clab__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.clab__headtext {
+  min-width: 0;
+  flex: 1 1 320px;
+}
+
+.clab__label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.52);
+}
+.clab__label span {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: rgba(238, 241, 255, 0.3);
+}
+
+/* 调节区（左） + 结果区（右）。
+   左栏给的是滑杆和预设的固定宽度，右栏吃掉剩余空间。 */
+.clab__body {
+  display: grid;
+  grid-template-columns: minmax(0, 292px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.clab__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clab__hint {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  line-height: 1.75;
+  color: rgba(238, 241, 255, 0.36);
+}
+.clab__hint b {
+  font-weight: 500;
+  color: rgba(238, 241, 255, 0.6);
+}
+
+.clab__stage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 图形区高度**三张台子统一**，不随内容变 —— 否则切换台子时下面的读数、
+   依据、数据台会整体跳一下，看着像页面在抖。
+   固定高度 + 默认 preserveAspectRatio="xMidYMid meet"，图形自己缩放居中。 */
+.clab__figwrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 6px;
+  height: 262px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 16px;
+  background: rgba(6, 9, 22, 0.28);
+}
+/* 恒星那张：左边一颗星，右边一条谱线，所以是两列 */
+.clab__figwrap--star {
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+}
+/* 行星那张：左边一个轨道盘，右边一把「放进太阳系比一比」的尺子 */
+.clab__figwrap--orbit {
+  grid-template-columns: 208px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.clab__verdict {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  color: rgba(var(--accent-rgb), 0.9);
+}
+
+/* 底线声明：这一句不许删、不许挪到台子下面 —— 实验室的数字是算出来的，
+   不是取回来的，这句话必须和滑杆一起在首屏里。 */
+.clab__disclaimer {
+  margin: 9px 0 0;
+  font-size: 10.5px;
+  line-height: 1.7;
+  color: rgba(238, 241, 255, 0.42);
+}
+.clab__disclaimer b {
+  font-weight: 500;
+  color: rgba(var(--accent-rgb), 0.95);
+}
+.clab__disclaimer span {
+  display: block;
+  margin-top: 2px;
+  color: rgba(238, 241, 255, 0.3);
+}
+
+/* ═════════════════════════ 二、滑杆 ═════════════════════════ */
+
+.cslide {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.cslide__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cslide__l {
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: rgba(238, 241, 255, 0.66);
+}
+.cslide__v {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-2);
+  white-space: nowrap;
+}
+.cslide__hint {
+  font-size: 10px;
+  line-height: 1.6;
+  color: rgba(238, 241, 255, 0.28);
+}
+
+/* 原生 range 的外观完全重写。保留原生控件是为了键盘操作
+   （方向键 / Home / End）和拖动时不用自己写 pointermove。 */
+.cslide__range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  /* ⚠️ 见文件头 ①：不写这一行，滑杆会被下方画布接走事件、完全拖不动 */
+  pointer-events: auto;
+  outline: none;
+}
+.cslide__range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 99px;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--accent-rgb), 0.75) 0%,
+    rgba(var(--accent-rgb), 0.75) var(--fill, 50%),
+    rgba(255, 255, 255, 0.13) var(--fill, 50%),
+    rgba(255, 255, 255, 0.13) 100%
+  );
+}
+.cslide__range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
+  border-radius: 50%;
+  background: #eef1ff;
+  border: 1px solid rgba(var(--accent-rgb), 0.9);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.16), 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: box-shadow 0.22s var(--ease), transform 0.22s var(--ease);
+}
+.cslide__range:hover::-webkit-slider-thumb,
+.cslide__range:active::-webkit-slider-thumb {
+  box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.24), 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+.cslide__range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.34), 0 0 0 1px var(--accent-2);
+}
+/* Firefox 走另一套伪元素，不能省 */
+.cslide__range::-moz-range-track {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.13);
+}
+.cslide__range::-moz-range-progress {
+  height: 3px;
+  border-radius: 99px;
+  background: rgba(var(--accent-rgb), 0.75);
+}
+.cslide__range::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #eef1ff;
+  border: 1px solid rgba(var(--accent-rgb), 0.9);
+}
+
+/* ═════════════════════════ 三、预设按钮 ═════════════════════════ */
+
+.cpre {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.cpre__l {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.36);
+}
+.cpre__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cpre__b {
+  padding: 5px 11px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: rgba(238, 241, 255, 0.6);
+  cursor: pointer;
+  transition: color 0.24s var(--ease), border-color 0.24s var(--ease),
+    background 0.24s var(--ease);
+}
+.cpre__b:hover {
+  color: #eef1ff;
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+.cpre__b.is-on {
+  color: #eef1ff;
+  border-color: rgba(var(--accent-rgb), 0.75);
+  background: rgba(var(--accent-rgb), 0.2);
+}
+
+/* ═════════════════════════ 四、读数 ═════════════════════════ */
+
+/* 读数固定四张，排 2×2 —— 用 auto-fit 会在 724px 下挤出 3 列，
+   第四张孤零零掉到第二行，看着不齐。 */
+.clab__reads {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.cread {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.022);
+}
+.cread__l {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: rgba(238, 241, 255, 0.42);
+}
+.cread__v {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  color: #eef1ff;
+  overflow-wrap: anywhere;
+}
+.cread__u {
+  margin-left: 4px;
+  font-style: normal;
+  font-size: 10.5px;
+  color: rgba(var(--accent-rgb), 0.95);
+}
+.cread__n {
+  font-size: 9.5px;
+  line-height: 1.6;
+  color: rgba(238, 241, 255, 0.3);
+}
+
+/* ═════════════════════════ 五、图形 ═════════════════════════ */
+
+.cfig {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.cfig__axis {
+  stroke: rgba(255, 255, 255, 0.17);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+/* 可见光窗口的两条边 —— 峰落在窗口的哪个位置要看得出来 */
+.cfig__visedge {
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+/* 太阳系位置尺上的行星点与单字标签 */
+.cfig__pd {
+  fill: rgba(238, 241, 255, 0.5);
+}
+.cfig__pt {
+  font-family: var(--font-sans);
+  font-size: 8px;
+  fill: rgba(238, 241, 255, 0.42);
+}
+.cfig__peak {
+  stroke: rgba(var(--accent-rgb), 0.85);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.cfig__mk {
+  fill: var(--accent-2);
+}
+/* 「你选的」那个标记的外圈 —— 空心，这样不会盖住行星的单字标签 */
+.cfig__mkr {
+  fill: none;
+  stroke: var(--accent-2);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+.cfig__peakt {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  fill: var(--accent-2);
+}
+.cfig__visl {
+  font-family: var(--font-sans);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  fill: rgba(238, 241, 255, 0.34);
+}
+.cfig__tick {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  fill: rgba(238, 241, 255, 0.3);
+}
+
+/* ---- 恒星：左边那颗发光的球 ---- */
+.cstar {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  align-self: center;
+}
+.cstar__glow {
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.cstar__disc {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: block;
+  transition: background 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+
+/* ---- 黑洞 ---- */
+.cfig__horizon {
+  fill: #04050b;
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-width: 1.1;
+  vector-effect: non-scaling-stroke;
+}
+.cfig__photon {
+  fill: none;
+  stroke: rgba(var(--accent-rgb), 0.5);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.cfig__holet {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  fill: rgba(238, 241, 255, 0.42);
+}
+
+/* ---- 行星轨道 ----
+ *  ⚠️ 说明文字放在轨道盘**外面**（.corbit 是列方向的 flex，盘在上、字在下）。
+ *     之前把说明绝对定位在盘的 bottom:-22px，直接压到下面那排读数卡上了（踩过）。 */
+.corbit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.corbit__stage {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+.corbit__sun {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 13px;
+  height: 13px;
+  margin: -6.5px 0 0 -6.5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 20px 5px rgba(var(--accent-rgb), 0.8);
+}
+.corbit__track {
+  position: absolute;
+  inset: calc(50% - var(--orb) / 2);
+  border-radius: 50%;
+  border: 1px dashed rgba(var(--accent-rgb), 0.4);
+}
+/* 转的是这个正方形本身，行星挂在它的右边缘 —— 纯 CSS 动画，不触发 React 重渲染 */
+.corbit__spin {
+  position: absolute;
+  inset: calc(50% - var(--orb) / 2);
+  animation: corbitSpin var(--dur, 8s) linear infinite;
+}
+.corbit__planet {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin: -5.5px 0 0 -5.5px;
+  border-radius: 50%;
+  transition: background 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+.corbit__tag {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: rgba(238, 241, 255, 0.26);
+}
+@keyframes corbitSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .corbit__spin {
+    animation: none;
+    transform: rotate(-32deg);
+  }
+}
+
+/* ═════════════════════════ 六、依据（公式与常数） ═════════════════════════ */
+
+.cbasis {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.cbasis__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 2px 0;
+  text-align: left;
+  cursor: pointer;
+}
+.cbasis__t {
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: rgba(238, 241, 255, 0.68);
+}
+.cbasis__t em {
+  display: block;
+  margin-top: 3px;
+  font-style: normal;
+  font-size: 10px;
+  color: rgba(238, 241, 255, 0.3);
+}
+.cbasis__fold {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: rgba(var(--accent-rgb), 0.9);
+}
+
+.cbasis__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.cbasis__col {
+  min-width: 0;
+}
+.cbasis__h {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.4);
+}
+.cbasis__h em {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: rgba(238, 241, 255, 0.24);
+}
+
+.cbasis__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.cbasis__list li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cbasis__expr {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--accent-2);
+}
+.cbasis__legend {
+  font-size: 10px;
+  line-height: 1.7;
+  color: rgba(238, 241, 255, 0.34);
+}
+
+.cbasis__consts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.cbasis__consts li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 118px) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.cbasis__sym {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-2);
+}
+.cbasis__cname {
+  font-size: 10px;
+  color: rgba(238, 241, 255, 0.5);
+}
+.cbasis__cval {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(238, 241, 255, 0.62);
+  overflow-wrap: anywhere;
+}
+.cbasis__ckind {
+  font-size: 9px;
+  white-space: nowrap;
+  color: rgba(238, 241, 255, 0.26);
+}
+
+.cbasis__note {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 10px;
+  line-height: 1.8;
+  color: rgba(238, 241, 255, 0.32);
+}
+.cbasis__note b {
+  font-weight: 500;
+  color: rgba(238, 241, 255, 0.62);
+}
+.cbasis__note code {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: rgba(var(--accent-rgb), 0.9);
+}
+
+/* ═════════════════════════ 七、场景骨架 ═════════════════════════
+ *  ⚠️ 不要用 justify-content:center / align-items:center 装这一栏：
+ *     内容一旦超过视口高度，flex 的 center 会把**顶部裁掉**（踩过，720p 吃掉 99px）。
+ *     正确姿势是「容器可滚动（.scene-scroll）+ 子元素 margin-block:auto」——
+ *     放得下时和居中效果一致，放不下时 auto margin 归零、从顶部开始、可滚动。
+ */
+
+.cortex {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 96px 32px 108px;
+}
+
+.cortex__inner {
+  width: min(1240px, 94vw);
+  max-width: 100%;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cortex__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.cortex__title {
+  margin: 0;
+  font-weight: 300;
+  line-height: 1.12;
+  font-size: clamp(20px, 2.4vw, 34px);
+}
+
+.cortex__sub {
+  margin: 10px 0 0;
+  max-width: 60ch;
+  font-size: 12.5px;
+  line-height: 1.75;
+  letter-spacing: 0.02em;
+  color: rgba(238, 241, 255, 0.5);
+}
+
+.cortex .kicker {
+  margin-bottom: 16px;
+}
+
+/* 页脚：把「上面的数字是算的、下面的字是官方的」再讲一次，两行分开放 */
+.cortex__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 10px;
+  line-height: 1.7;
+  color: rgba(238, 241, 255, 0.3);
+}
+.cortex__foot b {
+  font-weight: 500;
+  color: rgba(238, 241, 255, 0.58);
+}
+.cortex__foot code {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: rgba(var(--accent-rgb), 0.8);
+}
+.cortex__foot-meta {
+  text-align: right;
+}
+
+/* ═════════════════════════ 八、自适应 ═════════════════════════ */
+
+@media (min-width: 1200px) {
+  /* 宽屏下左侧是「银河轨道」导航（约 200px 宽），和 PHOTON / FOUNDRY / TECH
+     同一个约定，左右对称让位，正文仍在视口正中 */
+  html .cortex {
+    padding-left: 200px;
+    padding-right: 200px;
+  }
+}
+
+@media (max-width: 1199px) {
+  /* 窄屏时「银河轨道」收成贴在左边缘的圆点（约 38px 宽）。
+     其余栏目用的是 32px 的左内边距，实测会被那排圆点压到正文第一个字上
+     —— 这里单独给 CORTEX 留出 52px。改的只是本栏目的内边距，
+     没碰导航本身，也没碰转场。 */
+  html .cortex {
+    padding-left: 52px;
+  }
+}
+
+@media (max-width: 900px) {
+  .cortex {
+    padding: 88px 16px 104px;
+  }
+  .cortex__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .cortex__foot-meta {
+    text-align: left;
+  }
+}
+
+/* 中等宽度：操作台收窄 */
+@media (max-width: 1180px) {
+  .clab__body {
+    grid-template-columns: minmax(0, 250px) minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+
+/* 窄屏：操作台放到结果上面，一行两列变一列 */
+@media (max-width: 1020px) {
+  .clab__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .clab__figwrap--star {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+  .cbasis__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

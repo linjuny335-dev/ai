@@ -1,0 +1,1047 @@
+/* ============================================================================
+   BLUEYARD — 全局样式
+   DOM 层只负责文案 / 导航 / 按钮；所有 3D 内容在 WebGL 画布内。
+   主题强调色通过 <html data-theme="..."> 切换，见 src/App.tsx
+   ========================================================================== */
+
+:root {
+  --font-sans: 'Inter', 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei',
+    system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Courier New', monospace;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---- 主题强调色：新增主题时在这里补一组 ---- */
+
+/* 首页入口层：**刻意与 photon 用同一组强调色** ——
+   转场时 data-theme 从 home 切到 photon，变量一模一样，
+   所以连 DOM 层的强调色都不会闪一下。首页唯一的不同是「更安静」。 */
+html[data-theme='home'] {
+  --accent: #a091ff;
+  --accent-2: #d9cfff;
+  --accent-rgb: 160, 145, 255;
+}
+html[data-theme='photon'] {
+  --accent: #a091ff;
+  --accent-2: #d9cfff;
+  --accent-rgb: 160, 145, 255;
+}
+html[data-theme='foundry'] {
+  --accent: #ae93f9;
+  --accent-2: #d5cbf6;
+  --accent-rgb: 174, 147, 249;
+}
+html[data-theme='cortex'] {
+  --accent: #5fa8ff;
+  --accent-2: #bcdcff;
+  --accent-rgb: 95, 168, 255;
+}
+html[data-theme='blueyard'] {
+  --accent: #8f9dff;
+  --accent-2: #d5daff;
+  --accent-rgb: 143, 157, 255;
+}
+html[data-theme='tech'] {
+  --accent: #5fd8e8;
+  --accent-2: #bff0f7;
+  --accent-rgb: 95, 216, 232;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #04050b;
+  color: #eef1ff;
+  font-family: var(--font-sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- 布局骨架 ---------------------------------------------------------- */
+.app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ---- §1 GalaxyWorld：同一个宇宙，固定在最底层，永不销毁重建 ------------ */
+.galaxy-world {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  cursor: grab;
+}
+.galaxy-world.is-dragging {
+  cursor: grabbing;
+}
+.galaxy-world canvas {
+  display: block;
+}
+
+/* §15 统一暗色 Overlay：银河是背景，不能压过信息层级 */
+.galaxy-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: rgba(2, 5, 15, 0.28);
+}
+
+/* 中央暗袋：固定不动（不跟着 Scene 飞），保证任何时刻文字都读得清 */
+.pocket {
+  position: fixed;
+  inset: -80px -140px;
+  z-index: 6;
+  pointer-events: none;
+  background: radial-gradient(
+    58% 52% at 50% 50%,
+    rgba(3, 4, 10, 0.72) 0%,
+    rgba(3, 4, 10, 0.6) 30%,
+    rgba(3, 4, 10, 0.38) 52%,
+    rgba(3, 4, 10, 0.14) 70%,
+    rgba(3, 4, 10, 0) 88%
+  );
+  filter: blur(46px);
+}
+
+/* 上下压暗，保证文案可读 */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(2, 3, 8, 0.62) 0%, rgba(2, 3, 8, 0) 26%),
+    linear-gradient(0deg, rgba(2, 3, 8, 0.78) 0%, rgba(2, 3, 8, 0) 32%);
+}
+
+/* Scene 层：全站唯一会随转场移动的一层（GSAP 驱动 x / scale / opacity / blur） */
+.scene-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+.scene-wrap button,
+.scene-wrap a,
+.scene-wrap .logo {
+  pointer-events: auto;
+}
+
+/* §10 固定 UI 层：观察宇宙的界面，切场时只有 active 状态在变 */
+.fixed-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+.fixed-ui button,
+.fixed-ui a,
+.fixed-ui input {
+  pointer-events: auto;
+}
+
+/* ---- §16 首页（入口层）的「安静态」 ------------------------------------
+   首页只保留：顶部 HOME·TECH·DISCOVER（出口）+ 首页自己的文案与入口按钮。
+   左侧轨道导航 / All N / AUDIO / 滚轮提示全部收起 —— 用户对首页的要求是
+   「减少信息和前景元素」，但底下仍是同一片银河，一个像素都没换。
+
+   注意不能用 pointer-events:none 来「关掉」轨道：.fixed-ui button 是
+   pointer-events:auto，子元素会把事件接回来。所以这里用 visibility 才能真正停用。 */
+.fixed-ui .orbnav,
+.fixed-ui .topbar,
+.fixed-ui .audiobtn,
+.fixed-ui .wheel-hint {
+  transition:
+    opacity 0.5s var(--ease),
+    visibility 0s;
+}
+.fixed-ui--home .orbnav,
+.fixed-ui--home .topbar,
+.fixed-ui--home .audiobtn,
+.fixed-ui--home .wheel-hint {
+  opacity: 0;
+  visibility: hidden;
+  /* 先淡出，淡完了再真正隐藏，避免隐藏瞬间的硬切 */
+  transition:
+    opacity 0.4s var(--ease),
+    visibility 0s 0.4s;
+}
+
+/* ---- 中央文案 ---------------------------------------------------------- */
+.content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 110px 40px 168px;
+  text-align: center;
+}
+
+/* 文案背后的暗袋已独立成固定层 .pocket（见上方），
+   这样它不会跟着 Scene 一起飞出去，任何时刻都保证文字可读。 */
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.9;
+  margin-bottom: 26px;
+}
+
+.headline {
+  margin: 0;
+  font-weight: 300;
+  line-height: 1.14;
+  letter-spacing: 0.005em;
+  font-size: clamp(28px, 4.4vw, 60px);
+}
+
+.headline__line {
+  display: block;
+}
+.headline__line--accent {
+  color: var(--accent);
+  text-shadow: 0 0 42px rgba(var(--accent-rgb), 0.55), 0 0 12px rgba(var(--accent-rgb), 0.3);
+}
+.headline__word {
+  display: inline-block;
+  white-space: pre;
+}
+
+.blurb {
+  margin: 28px 0 0;
+  max-width: 620px;
+  font-size: 15px;
+  line-height: 1.85;
+  color: rgba(238, 241, 255, 0.78);
+  text-shadow: 0 1px 18px rgba(2, 3, 8, 0.9);
+}
+.blurb--cn {
+  margin-top: 10px;
+  font-size: 13.5px;
+  color: rgba(238, 241, 255, 0.54);
+}
+
+/* ---- Logo 漂浮行 ------------------------------------------------------- */
+.logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px 34px;
+  margin-top: 62px;
+  max-width: 780px;
+}
+
+.logo {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  color: rgba(238, 241, 255, 0.62);
+  text-shadow: 0 1px 14px rgba(2, 3, 8, 0.95);
+  padding: 6px 2px;
+  cursor: default;
+  transition: color 0.35s var(--ease), text-shadow 0.35s var(--ease), transform 0.35s var(--ease);
+  animation: float 7s var(--ease-soft) infinite;
+}
+.logo:hover {
+  color: var(--accent-2);
+  text-shadow: 0 0 26px rgba(var(--accent-rgb), 0.95), 0 0 8px rgba(var(--accent-rgb), 0.7);
+  transform: translateY(-3px) scale(1.06);
+}
+.logo.is-hot {
+  color: var(--accent-2);
+  text-shadow: 0 0 26px rgba(var(--accent-rgb), 0.95);
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+/* ---- 品牌介绍态（BLUEYARD） -------------------------------------------- */
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wordmark {
+  font-size: clamp(44px, 8vw, 116px);
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  margin: 0;
+  text-indent: 0.16em;
+  color: #f4f7ff;
+  text-shadow: 0 0 60px rgba(var(--accent-rgb), 0.5);
+}
+
+.brand__tagline {
+  margin: 22px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 2px 20px rgba(2, 3, 8, 0.95), 0 0 30px rgba(var(--accent-rgb), 0.4);
+}
+
+.brand__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 30px;
+  margin-top: 52px;
+  padding-top: 26px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: min(520px, 82vw);
+}
+
+.brand__link {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.26em;
+  color: rgba(238, 241, 255, 0.72);
+  text-decoration: none;
+  text-shadow: 0 2px 18px rgba(2, 3, 8, 0.95);
+  transition: color 0.3s var(--ease), text-shadow 0.3s var(--ease);
+}
+.brand__link:hover {
+  color: var(--accent-2);
+  text-shadow: 0 0 22px rgba(var(--accent-rgb), 0.9);
+}
+
+/* ---- 左上 VIEW ALL ----------------------------------------------------- */
+.topbar {
+  position: absolute;
+  top: 26px;
+  left: 28px;
+}
+
+/* ---- 右上「返回主页」----------------------------------------------------
+   只在章节里出现（组件在首页直接不渲染）。
+   为什么在右上：宽屏下正文左右各让出 200px（padding-left/right: 200px），
+   右边距带在顶部是空的，而左上角在 All N 之后只剩 ~90px，
+   装不下这个按钮（硬塞会压住 PHOTON 的标题 —— 实测过）。
+   定位与 .topbar 对称：都距顶 26px。 */
+.homeback {
+  position: absolute;
+  top: 26px;
+  right: 28px;
+  z-index: 4;
+}
+
+/* 做成「动作」而不是「标签」：主题强调色 + 一圈微光，箭头 hover 时向左退一格 */
+.homeback__btn .glass__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(238, 241, 255, 0.92);
+}
+.homeback__arw {
+  /* 「←」在等宽字里偏小，单独放大一点、并补一点视觉重量 */
+  font-size: 13px;
+  line-height: 1;
+  color: var(--accent);
+  transition: transform 0.3s var(--ease);
+}
+.homeback__en {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+.homeback__cn {
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  color: rgba(238, 241, 255, 0.55);
+  transition: color 0.3s var(--ease);
+}
+.homeback__btn:hover {
+  border-color: rgba(var(--accent-rgb), 0.75);
+  box-shadow: 0 0 26px -6px rgba(var(--accent-rgb), 0.75);
+}
+.homeback__btn:hover .homeback__arw {
+  transform: translateX(-3px);
+}
+.homeback__btn:hover .homeback__cn {
+  color: rgba(238, 241, 255, 0.85);
+}
+/* 窄屏（正文左右只剩 16~32px 内边距）藏掉中文副名，按钮收窄到「← Entry」，
+   避免和顶部居中的导航条、以及正文撞在一起 */
+@media (max-width: 1100px) {
+  .homeback__cn {
+    display: none;
+  }
+}
+
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(10, 12, 22, 0.42);
+  backdrop-filter: blur(12px);
+  color: rgba(238, 241, 255, 0.8);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+.ghostBtn:hover {
+  color: #fff;
+  border-color: rgba(var(--accent-rgb), 0.75);
+  box-shadow: 0 0 26px -6px rgba(var(--accent-rgb), 0.75);
+}
+.ghostBtn__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.95);
+}
+
+/* ---- 滚轮提示（首屏出现几秒后自己淡掉） --------------------------------- */
+.wheel-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 106px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  animation: wheelHint 9s var(--ease) forwards;
+}
+.wheel-hint i {
+  display: block;
+  width: 13px;
+  height: 21px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  opacity: 0.65;
+  position: relative;
+}
+/* 滚轮里那颗会往下走的小点 */
+.wheel-hint i::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 2px;
+  height: 4px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: wheelDot 1.8s var(--ease) infinite;
+}
+@keyframes wheelDot {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+@keyframes wheelHint {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  10%,
+  72% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -4px);
+  }
+}
+
+/* ---- 左侧「银河轨道」导航 ----------------------------------------------
+   五个栏目 = 轨道上的五个圆形节点，节点之间一条细发光线，线上有光点流动。
+   几何全部由下面这几个变量决定，改它们就能整体缩放：
+       --node-h  节点行高（= 轨道上的节点间距）
+       --disc    圆点直径
+       --halo    选中光晕直径
+   轨道长度与垂直居中偏移都用 calc 从变量推出来，增删主题不用改样式。      */
+.orbnav {
+  --node-h: 62px;
+  --disc: 36px;
+  --halo: 46px;
+  /* 紫蓝色：选中光晕 + 轨道光点。想让它跟随主题色，换成 var(--accent-rgb) */
+  --orb-rgb: 148, 140, 255;
+  --track-h: calc(var(--node-h) * (var(--nodes, 5) - 1));
+
+  position: absolute;
+  left: 34px;
+  top: 50%;
+  /* 不用 transform 做居中：祖先上的 transform 会干扰子元素的 layout 补间 */
+  margin-top: calc(var(--node-h) * var(--nodes, 5) / -2);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 轨道线：两端淡出，中间亮一点 */
+.orbnav__track {
+  position: absolute;
+  left: calc(var(--disc) / 2 - 0.5px);
+  top: calc(var(--node-h) / 2);
+  width: 1px;
+  height: var(--track-h);
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(var(--orb-rgb), 0.05),
+    rgba(var(--orb-rgb), 0.4) 20%,
+    rgba(var(--orb-rgb), 0.4) 80%,
+    rgba(var(--orb-rgb), 0.05)
+  );
+  box-shadow: 0 0 10px rgba(var(--orb-rgb), 0.45);
+}
+
+/* 流动光点：沿轨道缓慢往下走，两端淡入淡出。
+   只动 transform / opacity，不触发重排，也不进 React state。 */
+.orbnav__flow {
+  position: absolute;
+  left: -0.75px;
+  top: 0;
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: rgb(var(--orb-rgb));
+  box-shadow: 0 0 8px 1px rgba(var(--orb-rgb), 0.85);
+  opacity: 0;
+  animation: orbnav-flow 6.4s linear infinite;
+}
+/* 错开相位，让轨道上是「一串光点」而不是「一颗」 */
+.orbnav__flow--b {
+  animation-delay: -2.1s;
+}
+.orbnav__flow--c {
+  animation-delay: -4.2s;
+}
+@keyframes orbnav-flow {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  88% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(var(--track-h));
+    opacity: 0;
+  }
+}
+
+/* 一个节点 = 圆形小节点 + 右侧文字 */
+.orbnav__node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  height: var(--node-h);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(238, 241, 255, 0.5);
+  cursor: pointer;
+  transition: color 0.35s var(--ease);
+}
+.orbnav__node:hover {
+  color: rgba(238, 241, 255, 0.9);
+}
+.orbnav__node.is-active {
+  color: #fff;
+}
+
+/* 圆形小节点本身：一块液态玻璃小圆片 */
+.orbnav__disc {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: var(--disc);
+  height: var(--disc);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  /* 液态玻璃小圆片。
+     只靠 backdrop-filter 是不够的：这块背景本来就是深空黑，模糊出来还是黑。
+     所以额外压一层极淡的斜向反光 + 底部内阴影，圆片才有「片」的边界感，
+     同时不抢主体玻璃组件（导航条 / 卡片）的视觉。 */
+  background-image: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.02) 46%,
+    rgba(255, 255, 255, 0.055) 100%
+  );
+  background-color: rgba(10, 12, 26, 0.4);
+  backdrop-filter: blur(12px) saturate(1.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -8px 14px -10px rgba(0, 0, 0, 0.9);
+  transition:
+    transform 0.34s var(--ease),
+    border-color 0.34s var(--ease),
+    background-color 0.34s var(--ease),
+    box-shadow 0.34s var(--ease);
+}
+/* 鼠标移上去：节点轻微放大 */
+.orbnav__node:hover .orbnav__disc {
+  transform: scale(1.1);
+}
+/* 选中：更亮 + 紫蓝色光晕 */
+.orbnav__node.is-active .orbnav__disc {
+  transform: scale(1.06);
+  border-color: rgba(var(--orb-rgb), 0.8);
+  background: rgba(26, 22, 56, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 0 18px -2px rgba(var(--orb-rgb), 0.85),
+    0 0 44px -8px rgba(var(--orb-rgb), 0.6);
+}
+
+.orbnav__icon {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+/* 选中光晕：全场只有一个，先落在第一个节点的圆心，再靠 --i 往下平移若干格。
+   位移交给 CSS transition（只动 transform）—— 跑在合成器线程上，
+   主线程被下面的 WebGL 转场占满时也不会卡。 */
+.orbnav__halo {
+  position: absolute;
+  left: calc((var(--disc) - var(--halo)) / 2);
+  top: calc((var(--node-h) - var(--halo)) / 2);
+  width: var(--halo);
+  height: var(--halo);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translateY(calc(var(--i, 0) * var(--node-h)));
+  /* 末段轻微回弹：滑到位时有个「落定」的手感 */
+  transition: transform 0.52s cubic-bezier(0.34, 1.28, 0.44, 1);
+  will-change: transform;
+  border: 1px solid rgba(var(--orb-rgb), 0.85);
+  background: radial-gradient(
+    60% 60% at 50% 42%,
+    rgba(var(--orb-rgb), 0.5),
+    rgba(var(--orb-rgb), 0.12) 62%,
+    transparent 78%
+  );
+  box-shadow:
+    0 0 22px 2px rgba(var(--orb-rgb), 0.5),
+    0 0 60px 6px rgba(var(--orb-rgb), 0.26);
+}
+
+/* 文字：英文主名 + 中文副名，竖排两行。
+   宽度由较宽的那行决定（中文通常更宽），所以统一 nowrap，
+   不要让它撑成两行 —— 节点高度是固定的 --node-h。 */
+.orbnav__label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  white-space: nowrap;
+  opacity: 0.72;
+  transition:
+    opacity 0.34s var(--ease),
+    transform 0.34s var(--ease),
+    text-shadow 0.34s var(--ease);
+}
+
+.orbnav__label-en {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+/* 中文不要等宽字体（等宽下中文会很难看），字距也收normal */
+.orbnav__label-cn {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  opacity: 0.8;
+}
+/* 鼠标移上去：文字变亮，并轻微向外让出一点，像被点亮 */
+.orbnav__node:hover .orbnav__label {
+  opacity: 1;
+  transform: translateX(3px);
+}
+.orbnav__node.is-active .orbnav__label {
+  opacity: 1;
+  text-shadow: 0 0 18px rgba(var(--orb-rgb), 0.7);
+}
+
+/* ---- 轨道占用的左侧通道 ------------------------------------------------
+   轨道带文字时右边缘到 ~161px（英文主名 + 中文副名两行，中文那行更宽，
+   比只有英文时的 140px 多出约 20px），而 TECH 页的正文列是「居中定宽」的
+   （width: min(1180px, 94vw)），窄一点就会贴到视口边、被轨道压住。
+   所以宽屏下给 TECH 内容左右**对称**让出同样的宽度：
+   对称 + 内容居中 → 正文仍在视口正中，只是不再吃满两侧空白。
+   其它四个银河页面实测左边缘都在 330px 之后，不需要让位，保持原样不动。 */
+@media (min-width: 1200px) {
+  /* 用 html .tech 提高一级优先级，盖过 tech.css 里 .tech 的 padding 简写
+     （tech.css 在 styles.css 之后加载，同优先级会把它顶掉） */
+  html .tech {
+    padding-left: 200px;
+    padding-right: 200px;
+  }
+}
+
+/* 窄屏：轨道收成纯圆点贴在左边缘（约 30px 宽），TECH 正文从 3vw 起就已经让开，
+   不需要再挤通道；文字标签在这个宽度下会明显压到内容，所以隐藏。 */
+@media (max-width: 1199px) {
+  .orbnav {
+    left: 2px;
+    --node-h: 54px;
+    --disc: 28px;
+    --halo: 36px;
+  }
+  .orbnav__label {
+    display: none;
+  }
+}
+
+/* ---- 转场指示：一条极细的线，表示「镜头正在宇宙里移动」 -------------- */
+.travelbar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  width: 120px;
+  height: 1px;
+  transform: translateX(-50%);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+.travelbar.is-on {
+  opacity: 1;
+}
+.travelbar i {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  transform: translateX(-100%);
+}
+.travelbar.is-on i {
+  animation: travel 1.25s var(--ease-soft) forwards;
+}
+@keyframes travel {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* ---- 右下 AUDIO -------------------------------------------------------- */
+.audiobtn {
+  position: absolute;
+  right: 28px;
+  bottom: 40px;
+}
+
+.audiobtn__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.audiobtn__bars i {
+  display: block;
+  width: 2px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 1px;
+  transition: height 0.3s var(--ease);
+}
+.audiobtn.is-on .audiobtn__bars i {
+  animation: eq 1.1s var(--ease-soft) infinite;
+}
+.audiobtn.is-on .audiobtn__bars i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.audiobtn.is-on .audiobtn__bars i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+.audiobtn.is-on .audiobtn__bars i:nth-child(4) {
+  animation-delay: 0.52s;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    height: 3px;
+  }
+  50% {
+    height: 10px;
+  }
+}
+
+/* ---- VIEW ALL 面板 ----------------------------------------------------- */
+.panel {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 4, 10, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.panel__inner {
+  width: min(1040px, 90vw);
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 26px;
+}
+
+.panel__title {
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.panel__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.panel__card {
+  text-align: left;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.3s var(--ease), background 0.3s var(--ease), transform 0.3s var(--ease);
+}
+.panel__card:hover {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateY(-3px);
+}
+.panel__card.is-active {
+  border-color: rgba(var(--accent-rgb), 0.85);
+}
+.panel__idx {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+}
+.panel__name {
+  margin: 10px 0 6px;
+  font-size: 15px;
+  font-weight: 400;
+}
+/* 中文副名：紧跟英文标题，比它小一号、带一点强调色 */
+.panel__cn {
+  margin: 0 0 8px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--accent-2, var(--accent));
+}
+.panel__desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: rgba(238, 241, 255, 0.5);
+}
+
+/* ---- 载入层 ------------------------------------------------------------ */
+.loader {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: #04050b;
+}
+.loader__pct {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.4em;
+  color: rgba(238, 241, 255, 0.5);
+}
+.loader__bar {
+  width: min(260px, 60vw);
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+.loader__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+/* ---- 响应式 ------------------------------------------------------------ */
+@media (max-width: 820px) {
+  .content {
+    padding: 92px 22px 150px;
+  }
+  .logos {
+    gap: 10px 20px;
+    margin-top: 42px;
+  }
+  .logo {
+    font-size: 10.5px;
+  }
+  .audiobtn {
+    right: 16px;
+    bottom: 30px;
+  }
+  .topbar {
+    left: 16px;
+    top: 18px;
+  }
+}
+
+/* ============================================================================
+   TECH 区域 / 液态玻璃 —— 与主体解耦的追加样式
+   （玻璃质感本身在 ui/glass/glass.css，终端布局在 tech/tech.css）
+   ========================================================================== */
+
+/* 顶部悬浮的液态玻璃导航条（HOME / TECH / DISCOVER） */
+.topnav {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+/* 左上角 VIEW ALL 换成玻璃按钮后的微调 */
+.topbar__btn {
+  padding: 10px 17px;
+}
+
+/* 面板整体压暗减弱，让玻璃层能吃到下面的银河 */
+.panel {
+  background: rgba(3, 4, 10, 0.5);
+  backdrop-filter: blur(10px);
+}
+.panel__inner.glass {
+  padding: 26px 28px;
+  border-radius: 26px;
+  background-color: rgba(9, 12, 28, 0.34);
+}
+.panel__card.glass {
+  overflow: visible;
+}
+.panel__card.glass.is-active {
+  border-color: rgba(var(--accent-rgb), 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 30px -10px rgba(var(--accent-rgb), 0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo {
+    animation: none;
+  }
+  .audiobtn.is-on .audiobtn__bars i {
+    animation: none;
+  }
+  .wheel-hint i::after {
+    animation: none;
+    opacity: 1;
+  }
+  /* 轨道光点：不动了，但保留两颗静态亮点，免得轨道看起来是断的 */
+  .orbnav__flow {
+    animation: none;
+    opacity: 0.55;
+  }
+  .orbnav__flow--b {
+    transform: translateY(calc(var(--track-h) * 0.34));
+  }
+  .orbnav__flow--c {
+    transform: translateY(calc(var(--track-h) * 0.68));
+  }
+  /* 光晕不滑了，直接落到目标节点 */
+  .orbnav__halo {
+    transition: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .topnav {
+    top: 14px;
+  }
+  .glass-seg--nav .glass-seg__btn {
+    padding: 9px 13px;
+    letter-spacing: 0.14em;
+  }
+}

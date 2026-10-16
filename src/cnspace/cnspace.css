@@ -1,0 +1,586 @@
+/* ============================================================================
+ *  cnspace.css —— 中国航天四源「数据台」的样式
+ * ----------------------------------------------------------------------------
+ *  只写布局与排版；玻璃质感（底色 / backdrop blur / 边缘高光 / 折射光带 /
+ *  指针高光）全部来自 ui/glass/glass.css，和其余栏目共用同一套。
+ *
+ *  约定（不能破）：
+ *    · 指针交互只写 CSS 变量（由 GlassSurface 负责），这里不碰
+ *    · 入场动画挂在包裹层 .glass-enter，不挂在 .glass 上
+ *    · 配色一律用主题变量 var(--accent) / var(--accent-rgb)，
+ *      切板块时自动跟着变，不写死颜色
+ * ========================================================================== */
+
+/* ───────────── 板块容器：接入数据台之后可能高于视口 ─────────────
+ *  原来每个板块的内容都刚好放得下，所以是「绝对定位 + 垂直居中」。
+ *  接了数据台之后内容变长，矮视口（720p）会溢出。
+ *  这里只做两件事，**不改任何字号 / 颜色 / 间距**：
+ *    · 容器可滚动；
+ *    · 子元素用 margin-block:auto 居中 —— 这正是 flex 对 auto margin 的定义，
+ *      有富余空间时和原来的 justify-content:center 效果完全一致，
+ *      空间不够时 auto margin 归零、内容从顶部开始，不会被裁掉（center 会裁）。
+ *  滚轮优先级：列表自己能滚时列表滚（[data-wheel-scroll] 就近生效），
+ *  滚到边界之后才交给板块本身，板块也到底了才切板块 —— 和原来 TECH 的行为一致。
+ * ─────────────────────────────────────────────────────────────── */
+.scene-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  /* ⚠️ 必须显式 auto：.scene-wrap 是 pointer-events:none（只放行 button/a/.logo），
+     滚轮事件会**穿透**到下面的 WebGL 画布 —— useWheelNav 里那句
+     `el.closest('[data-wheel-scroll]')` 就永远拿不到滚动容器，
+     结果就是「列表根本没滚，直接换板块」，滚动条也拖不动（踩过）。
+     3D 层不使用指针事件（全仓没有一处 onPointer*），所以这里放开是安全的。 */
+  pointer-events: auto;
+}
+.scene-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.scene-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 99px;
+}
+.scene-scroll > * {
+  margin-block: auto;
+}
+
+/* .content__stack 原来是 BLUEYARD 的「文案 + 数据台」竖直栈。
+   2026-09-21 五个板块全部有了自己的场景组件，最后一个 BLUEYARD 也改成了
+   「青年任务中心」（src/blueyard/BlueyardScene.tsx + 自己的 .byard__inner），
+   于是这个栈没有任何地方再用到了。样式暂时留着（.content 的滚动约定仍在用），
+   但下面这两条只对 .content__stack 生效，等同死代码。 */
+.content__stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+}
+.content__stack .cn-panel {
+  width: min(1180px, 94vw);
+  text-align: left;
+}
+
+/* ⚠️ .content 原来是 `column + justify-content:center`。内容一旦超过视口高度，
+   center 会把**顶部裁掉**（flex 的经典陷阱，实测 720p 下标题顶部被吃掉 99px）。
+   这里只把主轴对齐换成 flex-start，让 .content__stack 的 margin-block:auto
+   去承担居中职责：放得下时和原来一样居中，放不下时从顶部开始、可滚动、不裁。 */
+.content.scene-scroll {
+  justify-content: flex-start;
+}
+
+/* ─────────────────────────── 面板 ─────────────────────────── */
+
+.cn-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+/* 面板头：左边「来源 · 官方」小标题，右边同步状态 */
+.cn-panel__head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cn-panel__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.cn-panel__note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(238, 241, 255, 0.42);
+  min-width: 0;
+}
+
+.cn-panel__meter {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: rgba(238, 241, 255, 0.4);
+  white-space: nowrap;
+}
+
+.cn-panel__pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.9);
+  animation: cnPulse 1.8s var(--ease-soft) infinite;
+}
+@keyframes cnPulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+/* ───────────────────── 来源标签行（哪些源在供数） ───────────────────── */
+
+.cn-srcs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.cn-src {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.035);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: rgba(238, 241, 255, 0.62);
+  white-space: nowrap;
+}
+.cn-src__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--sc, var(--accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--sc, var(--accent)) 70%, transparent);
+}
+.cn-src__n {
+  color: rgba(238, 241, 255, 0.34);
+}
+/* 该源这一轮没抓上：标签变暗 + 加一条删除线，并在下面给出口 */
+.cn-src.is-bad {
+  color: rgba(238, 241, 255, 0.4);
+  border-color: rgba(255, 120, 120, 0.28);
+}
+.cn-src.is-bad .cn-src__dot {
+  background: rgba(255, 130, 130, 0.75);
+  box-shadow: 0 0 8px rgba(255, 130, 130, 0.5);
+}
+
+/* ───────────────────────── 列表（自带滚动） ───────────────────────── */
+
+.cn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(302px, 1fr));
+  gap: 12px;
+  /* 高度上限由使用方用 --cn-grid-max 覆盖；默认给一个能放进视口的保守值 */
+  max-height: var(--cn-grid-max, 300px);
+  min-height: 132px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 5px;
+  margin: -5px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+.cn-grid::-webkit-scrollbar {
+  width: 6px;
+}
+.cn-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 99px;
+}
+
+/* 整宽的状态块（加载 / 失败 / 空） */
+.cn-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30px 24px;
+  text-align: center;
+}
+.cn-state__icon {
+  font-size: 17px;
+  color: var(--accent);
+  opacity: 0.85;
+}
+.cn-state__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(241, 244, 255, 0.92);
+}
+.cn-state__text {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: rgba(238, 241, 255, 0.5);
+}
+.cn-state__list {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  line-height: 1.8;
+  letter-spacing: 0.06em;
+  color: rgba(238, 241, 255, 0.42);
+}
+
+/* 加载中的点状动效（不写死文案，文案在组件里） */
+.cn-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.cn-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: cnDot 1.2s var(--ease-soft) infinite;
+}
+.cn-dots i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.cn-dots i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+@keyframes cnDot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* 骨架卡片 */
+.cn-slot {
+  display: flex;
+}
+.cn-skeleton {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  min-height: 152px;
+}
+.cn-sk {
+  height: 9px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.13) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 220% 100%;
+  animation: cnShimmer 1.5s linear infinite;
+}
+.cn-sk--thumb {
+  height: 62px;
+  border-radius: 8px;
+}
+.cn-sk--title {
+  height: 13px;
+  width: 92%;
+}
+.cn-sk--w60 {
+  width: 58%;
+}
+.cn-sk--w40 {
+  width: 36%;
+}
+@keyframes cnShimmer {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+/* ─────────────────────────── 卡片 ─────────────────────────── */
+
+.cn-card {
+  --sc: var(--accent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 15px 12px;
+  min-height: 152px;
+  text-align: left;
+}
+
+/* 覆盖整卡的「展开」热区：用一个真 <button>，
+   这样 .scene-wrap button { pointer-events:auto } 的白名单能接住点击
+   （裸 <div onClick> 会被下方画布接走事件 —— 这个坑踩过）。
+   层级压在最底：正文层 pointer-events:none，点击自然穿透到它。 */
+.cn-card__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border-radius: inherit;
+  cursor: pointer;
+}
+.cn-card__hit:focus-visible {
+  outline: 1px solid rgba(var(--accent-rgb), 0.7);
+  outline-offset: -3px;
+}
+
+/* 正文层不接事件，点击穿透给 __hit */
+.cn-card__body {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 缩略图：直接用官方图床地址，不转存；加载失败就整块不显示 */
+.cn-card__thumb {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 8px;
+  height: 84px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.cn-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0.88;
+  transition: opacity 0.4s var(--ease);
+}
+.cn-card:hover .cn-card__thumb img {
+  opacity: 1;
+}
+/* 视频类给一个角标 */
+.cn-card__badge {
+  position: absolute;
+  left: 7px;
+  bottom: 7px;
+  z-index: 1;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(6, 8, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  color: rgba(238, 241, 255, 0.8);
+}
+
+/* 第一行：来源标签 + 栏目 + 日期 */
+.cn-card__top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  color: rgba(238, 241, 255, 0.42);
+}
+.cn-card__src {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--sc);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--sc) 50%, transparent);
+}
+.cn-card__src i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sc);
+  flex: none;
+}
+.cn-card__col {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12ch;
+}
+/* 「微信原文」标记：官方栏目把条目直接挂到自家公众号时的如实标注 */
+.cn-card__via {
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 214, 140, 0.28);
+  background: rgba(122, 214, 140, 0.08);
+  color: rgba(150, 226, 166, 0.85);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.cn-card__date {
+  margin-left: auto;
+  white-space: nowrap;
+  color: rgba(238, 241, 255, 0.34);
+}
+
+.cn-card__title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 400;
+  line-height: 1.44;
+  color: rgba(241, 244, 255, 0.95);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* 展开后标题不再截断 */
+.cn-card.is-open .cn-card__title {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+
+.cn-card__summary {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.68;
+  color: rgba(238, 241, 255, 0.56);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cn-card.is-open .cn-card__summary {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+/* 官方页面确实没有导语的条目不编内容，只说明这一点 */
+.cn-card__summary--none {
+  font-style: italic;
+  color: rgba(238, 241, 255, 0.3);
+}
+/* 展开后如果摘要比两行还长，给一个可滚动的上限，别把卡片撑得过高 */
+.cn-card.is-open .cn-card__summary,
+.cn-card.is-open .cn-card__title {
+  max-height: 168px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* 话题标签 */
+.cn-card__tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.cn-card__tag {
+  padding: 1.5px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.03);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: rgba(238, 241, 255, 0.5);
+}
+
+/* 页脚：左边是展开提示，右边是「查看原文」 */
+.cn-card__foot {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+}
+.cn-card__hint {
+  pointer-events: none;
+  color: rgba(238, 241, 255, 0.3);
+  white-space: nowrap;
+}
+.cn-card__orig {
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.32);
+  padding-bottom: 1px;
+  transition: border-color 0.3s var(--ease), color 0.3s var(--ease);
+}
+.cn-card__orig:hover {
+  border-color: rgba(var(--accent-rgb), 0.9);
+}
+
+/* ─────────────────── 话题筛选条（TECH 页用） ─────────────────── */
+
+.cn-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cn-filter__count {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: rgba(238, 241, 255, 0.36);
+  white-space: nowrap;
+}
+
+/* ───────────────────────── 窄屏收敛 ───────────────────────── */
+
+@media (max-width: 900px) {
+  .cn-grid {
+    grid-template-columns: 1fr;
+  }
+  .cn-card__col {
+    max-width: 9ch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cn-panel__pulse,
+  .cn-dots i,
+  .cn-sk {
+    animation: none;
+  }
+}

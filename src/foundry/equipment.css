@@ -1,0 +1,685 @@
+/* ============================================================================
+ *  equipment.css —— FOUNDRY「航天装备展厅」样式
+ * ----------------------------------------------------------------------------
+ *  只写布局、排版与线稿配色；玻璃质感（）全部来自 ui/glass/glass.css。
+ *
+ *  配色一律走主题变量 var(--accent) / var(--accent-2) / var(--accent-rgb)，
+ *  切板块时自动跟着换，不写死颜色（和 cnspace.css 同一条约定）。
+ *
+ *  ⚠️ 指针事件：整个 FOUNDRY 板块挂着 .scene-scroll（pointer-events:auto），
+ *     所以 SVG 里的 <g> 能收到点击。这里仍然给可点元素显式写了
+ *     pointer-events；装饰性网格显式写 none，避免挡住部件。
+ * ========================================================================== */
+
+/* ─────────────────────────── 展厅骨架 ─────────────────────────── */
+.ehall {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+/* ── 展品目录（左栏） ─────────────────────────────────────────── */
+.ehall__rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ehall__railtitle {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.42);
+}
+.ehall__railtitle span {
+  display: block;
+  margin-top: 3px;
+  letter-spacing: 0.1em;
+  color: rgba(238, 241, 255, 0.26);
+}
+
+.ehall__tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ehall__tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+/* 玻璃层的伪元素在上面，内容要抬到它上面去 */
+.ehall__tab > * {
+  position: relative;
+  z-index: 1;
+}
+/* 目录按钮不要那 5px 的大幅上浮，太吵 */
+.ehall__tab:hover {
+  --lift: -2px;
+  --sc: 1.01;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.ehall__tab.is-active {
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background-color: rgba(var(--accent-rgb), 0.11);
+}
+
+.ehall__tab-no {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: rgba(238, 241, 255, 0.42);
+  transition: color 0.35s var(--ease);
+}
+.ehall__tab.is-active .ehall__tab-no {
+  color: var(--accent-2);
+}
+
+.ehall__tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.ehall__tab-name {
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: rgba(238, 241, 255, 0.78);
+  white-space: nowrap;
+  transition: color 0.35s var(--ease);
+}
+.ehall__tab.is-active .ehall__tab-name,
+.ehall__tab:hover .ehall__tab-name {
+  color: #fff;
+}
+.ehall__tab-fam {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: rgba(238, 241, 255, 0.34);
+  white-space: nowrap;
+}
+
+/* ── 展台（右栏） ─────────────────────────────────────────────── */
+.ehall__stage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* ⚠️ 图形列**不能给宽**。
+   SVG 用的是默认的 preserveAspectRatio="xMidYMid meet"：viewBox 是竖长的
+   （例如 420×640），一旦图形列比线稿宽，就只能按高度适配 —— 线稿会缩成中间
+   一条窄带，两边全是空气（实测列宽 610px 时线稿只有 248px）。
+   所以这里把图形列限死在 330px 以内，让「蓝图纸」几乎占满这一列；
+   多出来的宽度一律给右栏文字（文字另有 64ch 上限，不会拉成一行太长）。 */
+.ehall__plate {
+  display: grid;
+  grid-template-columns: minmax(220px, 330px) minmax(0, 1fr);
+  gap: 24px;
+  padding: 15px 20px 16px;
+  border-radius: 26px;
+}
+/* 玻璃伪元素之上 */
+.ehall__plate > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 横向构型（天宫 T 字、天问 环绕器）：viewBox 更宽，在 330px 的窄列里只能
+   按宽度适配 → 线稿只有 330×297。把图形列放宽到 480，它们就能按高度适配，
+   长到和竖构型一样高（实测 天问 从 330×250 变成 475×360）。
+   ⚠️ 窄屏断点在文件末尾，会覆盖这条（同权重、后者胜）。 */
+.ehall__plate--wide {
+  grid-template-columns: minmax(300px, 480px) minmax(0, 1fr);
+}
+
+/* ---- 结构示意图 ---- */
+.ehall__figwrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.efig {
+  width: 100%;
+  height: clamp(300px, 40vh, 430px);
+  display: block;
+}
+
+/* 底衬 + 网格：纯装饰，显式关掉指针事件。
+   网格是「工程图纸」的暗示 —— 这块区域比线稿本身宽得多，
+   疏网格正好把空白填成有意的版面，而不是空洞。 */
+.efig__plate {
+  fill: rgba(6, 9, 22, 0.4);
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 1;
+  pointer-events: none;
+}
+.efig__gl {
+  stroke: rgba(255, 255, 255, 0.055);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.efig__gl.is-major {
+  stroke: rgba(255, 255, 255, 0.095);
+}
+
+/* 部件形体：统一的细线稿 */
+.efig__shape {
+  fill: rgba(var(--accent-rgb), 0.085);
+  stroke: rgba(var(--accent-rgb), 0.56);
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+  transition:
+    fill 0.3s var(--ease),
+    stroke 0.3s var(--ease),
+    stroke-opacity 0.3s var(--ease),
+    fill-opacity 0.3s var(--ease);
+}
+/* 结构分界线：只画线不填色 */
+.efig__shape--dash {
+  fill: none;
+  stroke-opacity: 0.4;
+}
+
+.ehall__part {
+  pointer-events: all;
+  cursor: pointer;
+}
+.ehall__part:hover .efig__shape {
+  stroke: var(--accent-2);
+  fill: rgba(var(--accent-rgb), 0.16);
+}
+.ehall__part.is-on .efig__shape {
+  stroke: var(--accent-2);
+  stroke-width: 1.5;
+  fill: rgba(var(--accent-rgb), 0.2);
+}
+.ehall__part.is-on {
+  filter: drop-shadow(0 0 7px rgba(var(--accent-rgb), 0.75));
+}
+/* 已经选中某个部件时，其余部件退到后面去 */
+.ehall__part.is-dim:not(.is-on) .efig__shape {
+  stroke-opacity: 0.3;
+  fill-opacity: 0.5;
+}
+.ehall__part.is-dim:not(.is-on):hover .efig__shape {
+  stroke-opacity: 0.8;
+  fill-opacity: 1;
+}
+
+/* ---- 编号热点 ---- */
+.emark {
+  pointer-events: all;
+  cursor: pointer;
+  outline: none;
+}
+.emark__hit {
+  fill: transparent;
+}
+.emark__ring {
+  fill: none;
+  stroke: rgba(var(--accent-rgb), 0.34);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.emark__dot {
+  fill: rgba(8, 11, 26, 0.84);
+  stroke: rgba(var(--accent-rgb), 0.85);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  transition: fill 0.28s var(--ease), stroke 0.28s var(--ease);
+}
+.emark__no {
+  fill: rgba(238, 241, 255, 0.88);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+  transition: fill 0.28s var(--ease);
+}
+.emark:hover .emark__dot,
+.emark:focus-visible .emark__dot {
+  fill: rgba(var(--accent-rgb), 0.3);
+  stroke: var(--accent-2);
+}
+.emark.is-on .emark__dot {
+  fill: var(--accent);
+  stroke: var(--accent-2);
+}
+.emark.is-on .emark__no {
+  fill: #080b1a;
+}
+.emark.is-on .emark__ring,
+.emark:focus-visible .emark__ring {
+  animation: emarkPulse 1.7s ease-out infinite;
+}
+@keyframes emarkPulse {
+  from {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  to {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+
+.ehall__fignote {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: rgba(238, 241, 255, 0.32);
+  text-align: center;
+}
+
+/* ---- 说明栏 ---- */
+.ehall__side {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+}
+
+.ehall__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ehall__fam {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--accent-2);
+  border: 1px solid rgba(var(--accent-rgb), 0.34);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.ehall__name {
+  margin: 2px 0 0;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.32;
+  color: #fff;
+}
+.ehall__en {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.4);
+}
+.ehall__oneline {
+  margin: 3px 0 0;
+  max-width: 54ch;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: rgba(238, 241, 255, 0.58);
+}
+
+/* 部件选择条 */
+.ehall__parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.echip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px 5px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(238, 241, 255, 0.72);
+  cursor: pointer;
+  transition:
+    border-color 0.3s var(--ease),
+    background-color 0.3s var(--ease),
+    color 0.3s var(--ease);
+}
+.echip__no {
+  flex: none;
+  font-style: normal;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(var(--accent-rgb), 0.18);
+  color: var(--accent-2);
+  transition: background-color 0.3s var(--ease), color 0.3s var(--ease);
+}
+.echip:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+.echip.is-on {
+  border-color: rgba(var(--accent-rgb), 0.65);
+  background: rgba(var(--accent-rgb), 0.15);
+  color: #fff;
+}
+.echip.is-on .echip__no {
+  background: var(--accent);
+  color: #080b1a;
+}
+
+/* 部件说明 / 装备用途 */
+.ehall__detail {
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  padding-left: 15px;
+  min-height: 120px;
+}
+.ehall__dname {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+}
+.ehall__den {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.36);
+}
+.ehall__drole {
+  margin: 0;
+  max-width: 64ch;
+  font-size: 11.5px;
+  line-height: 1.88;
+  color: rgba(238, 241, 255, 0.66);
+}
+.ehall__dhint {
+  margin: 11px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.11);
+  font-size: 11px;
+  line-height: 1.8;
+  color: rgba(238, 241, 255, 0.42);
+}
+.ehall__dhint b {
+  color: var(--accent-2);
+  font-weight: 500;
+}
+
+/* 官方出口 */
+.ehall__srcs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 9px;
+}
+.ehall__srclabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.34);
+}
+.ehall__srclink {
+  font-size: 10px;
+  color: rgba(var(--accent-rgb), 0.92);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.28);
+  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+.ehall__srclink:hover {
+  color: #fff;
+  border-bottom-color: rgba(238, 241, 255, 0.6);
+}
+
+/* ─────────────────────────── 参数区 ─────────────────────────── */
+.ehall__factbox {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background-color: rgba(9, 12, 28, 0.2);
+  padding: 13px 20px 14px;
+}
+.ehall__facttitle {
+  margin: 0 0 9px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.5);
+}
+.ehall__facttitle span {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: rgba(238, 241, 255, 0.3);
+}
+
+.efacts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 整器参数：两列排。
+   ⚠️ 一开始是单列，5 条参数叠起来 350px 高，把下面本来就有的
+   发射时间轴和数据台推得更远（矮视口下要多滚一屏多）。改成网格后大约省一半。
+   单元格保留上边框，读起来像一张参数表；两列时同一行对齐，
+   比「单列长龙」更像工程文档。 */
+.ehall__factbox .efacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
+  column-gap: 30px;
+}
+
+.efacts--dense {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.11);
+}
+
+.efact {
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.efacts--dense .efact {
+  padding: 0;
+  border-top: 0;
+}
+.efacts--dense .efact + .efact {
+  margin-top: 10px;
+}
+
+.efact__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.efact__label {
+  flex: none;
+  min-width: 86px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(238, 241, 255, 0.4);
+}
+.efact__value {
+  flex: 1 1 260px;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1.72;
+  color: rgba(238, 241, 255, 0.8);
+}
+.efacts--dense .efact__label {
+  min-width: 0;
+}
+.efacts--dense .efact__value {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: rgba(238, 241, 255, 0.7);
+}
+
+.efact__src {
+  flex: none;
+  font-size: 9.5px;
+  white-space: nowrap;
+  color: rgba(var(--accent-rgb), 0.95);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.32);
+  transition: color 0.3s var(--ease);
+}
+.efact__src:hover {
+  color: #fff;
+}
+.efact__curated {
+  flex: none;
+  font-size: 9px;
+  white-space: nowrap;
+  color: rgba(238, 241, 255, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+/* 官方原文折叠块 */
+.efact__q {
+  margin-top: 5px;
+}
+.efact__q > summary {
+  display: inline-block;
+  list-style: none;
+  cursor: pointer;
+  font-size: 9.5px;
+  color: rgba(238, 241, 255, 0.4);
+  transition: color 0.3s var(--ease);
+}
+.efact__q > summary::-webkit-details-marker {
+  display: none;
+}
+.efact__q > summary::before {
+  content: '▸ ';
+}
+.efact__q[open] > summary::before {
+  content: '▾ ';
+}
+.efact__q > summary:hover {
+  color: rgba(238, 241, 255, 0.75);
+}
+.efact__q blockquote {
+  margin: 7px 0 0;
+  padding: 8px 12px;
+  border-left: 2px solid rgba(var(--accent-rgb), 0.5);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11px;
+  line-height: 1.85;
+  color: rgba(238, 241, 255, 0.6);
+}
+.efact__qlink {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 9.5px;
+  color: rgba(var(--accent-rgb), 0.88);
+  text-decoration: none;
+}
+.efact__qlink:hover {
+  color: #fff;
+}
+.efact__note {
+  margin: 5px 0 0;
+  font-size: 10px;
+  line-height: 1.72;
+  color: rgba(238, 241, 255, 0.36);
+}
+
+/* ─────────────────────────── 免责/标注行 ─────────────────────── */
+/* ⚠️ .ehall 是两列网格，免责标注是它的第三个子元素 —— 不写 grid-column
+   就会被当成「第 2 行第 1 列」的格子，塞进 176px 宽的目录列里挤成一团。
+   2026-09-21 截图时发现，必须跨满整行。 */
+.ehall__disclaimer {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  line-height: 1.8;
+  color: rgba(238, 241, 255, 0.36);
+}
+.ehall__disclaimer b {
+  font-weight: 500;
+  color: rgba(238, 241, 255, 0.6);
+}
+
+/* ─────────────────────────── 窄屏收敛 ─────────────────────────── */
+@media (max-width: 1180px) {
+  .ehall {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ehall__tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .ehall__tab {
+    flex: 1 1 148px;
+  }
+}
+@media (max-width: 1020px) {
+  .ehall__plate {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .ehall__detail {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    padding-left: 0;
+    padding-top: 12px;
+    min-height: 0;
+  }
+  .efig {
+    height: clamp(260px, 34vh, 340px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emark.is-on .emark__ring,
+  .emark:focus-visible .emark__ring {
+    animation: none;
+  }
+  .efig__shape,
+  .emark__dot,
+  .emark__no,
+  .echip,
+  .echip__no {
+    transition: none;
+  }
+}
